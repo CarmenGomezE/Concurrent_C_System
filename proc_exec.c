@@ -12,7 +12,7 @@ int main(void) {
     perror("fork");
     exit(EXIT_FAILURE);
   } else if (pid == 0) {
-    if (execvp("ls", argv)) {
+    if (execl("/bin/ls", argv[0], argv[1], (char*)NULL)) {
       perror("execvp");
       exit(EXIT_FAILURE);
     }
