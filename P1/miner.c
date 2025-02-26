@@ -116,6 +116,7 @@ int miner( long int target, int rounds, int n_threads, int fd1[2], int fd2[2]){
                 exit(EXIT_FAILURE);
             }
         }
+        free(threads);
 
         /*Writes in the first pipe the value of the target.*/
         targetPipe= target;
