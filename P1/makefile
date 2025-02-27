@@ -7,7 +7,7 @@ all: practica1
 
 # Regla para compilar el ejecutable
 practica1: $(OBJ)
-	$(CC) $(CFLAGS) -o practica1 $(OBJ) -lm
+	$(CC) $(CFLAGS) -o mrush $(OBJ) -lm
 
 # Regla para compilar archivos .c a .o
 %.o: %.c $(DEPS)
@@ -15,4 +15,4 @@ practica1: $(OBJ)
 
 # Limpia archivos objeto y el ejecutable
 clean:
-	rm -f $(OBJ) practica1
+	rm -f $(OBJ) mrush

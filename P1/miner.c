@@ -140,6 +140,11 @@ int miner( long int target, int rounds, int n_threads, int fd1[2], int fd2[2]){
         if(!strcmp(readbuffer, "SolutionRejected")){
             printf("The solution has been invalidated\n");
 
+            /* Close of the write end of miner in the first pipe.*/
+            close(fd1[1]);
+            /* Close of the read end of miner in the second pipe.*/
+            close(fd2[0]);
+
             /*In case of wrong solution, waits for the Monitor process to end and prints its end code.*/
             if (waitpid(pidMonitor, &status, 0) > 0) {
                 if (WIFEXITED(status)) {
