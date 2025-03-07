@@ -1,6 +1,7 @@
 {
     "files.associations": {
         "pow.h": "c",
-        "miner.h": "c"
+        "miner.h": "c",
+        "string.h": "c"
     }
 }
