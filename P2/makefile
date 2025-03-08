@@ -1,7 +1,7 @@
 CC = gcc
 CFLAGS = -Wall -Wextra
 OBJ = principal.o voter.o candidate.o
-DEPS = voter.h candidate.h
+DEPS = voter.h candidate.h -lrt
 
 all: practica2
 

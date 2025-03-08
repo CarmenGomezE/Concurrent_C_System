@@ -17,20 +17,32 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
-void handle_sigusr1(int argSignal){
+void handle_sigusr1(int sig){
 }
 
-void handle_sigterm(int argSignal){
+void handle_sigterm(int sig){
     exit(EXIT_SUCCESS);
 }
 
 
 int voter( ){
-    if (signal(SIGUSR1, handle_sigusr1) == SIG_ERR) {
+    struct sigaction act1;
+    act1.sa_handler = handle_sigusr1;
+    sigemptyset(&(act1.sa_mask));
+    act1.sa_flags = 0;
+
+    struct sigaction act2;
+    act2.sa_handler = handle_sigterm;
+    sigemptyset(&(act2.sa_mask));
+    act2.sa_flags = 0;
+
+    signal(SIGINT, SIG_IGN);
+
+    if (sigaction(SIGUSR1, &act1, NULL) <0) {
         perror("Error al configurar manejador de señales");
         return EXIT_FAILURE;
     }
-    if (signal(SIGTERM, handle_sigterm) == SIG_ERR) {
+    if (sigaction(SIGTERM, &act2, NULL) <0) {
         perror("Error al configurar manejador de señales");
         return EXIT_FAILURE;
     }

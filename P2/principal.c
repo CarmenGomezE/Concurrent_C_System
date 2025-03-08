@@ -15,6 +15,7 @@
 #include <string.h>
 #include <signal.h>
 #include <sys/types.h>
+#include <sys/signal.h>
 #include <sys/wait.h>
 #include "voter.h"
 
@@ -22,33 +23,48 @@ int n_procs;
 pid_t *pidsVoters;
 
 
-void handle_siginit(int argSignal){
-    int procCounter;
+void handle_siginit(int sig){
+    fflush(stdout);
+    
+    int procCounter, status;
     
     for(procCounter=0; procCounter<n_procs; procCounter++){
         kill(pidsVoters[procCounter], SIGTERM);
     }
+
+    /*Wait for all the childs*/
+    for(procCounter=0; procCounter<n_procs; procCounter++){
+        if (waitpid(pidsVoters[procCounter], &status, 0)==-1) {
+            perror("Waitpid failed");
+            free(pidsVoters);
+            exit(EXIT_FAILURE);
+        }
+    }
+
+    free(pidsVoters);
+    printf("Finishing by signal\n");
+    exit(EXIT_SUCCESS);
 }
 
 /*Main program that implementates the principal process.*/
 int main(int argc, char *argv[]){
-    int n_secs, procCounter, status;
+    int n_secs, procCounter;
     pid_t pidVoter;
     FILE *procFile;
+    struct sigaction act;
+    act.sa_handler = handle_siginit;
+    sigemptyset(&(act.sa_mask));
+    act.sa_flags = 0;
 
     if(argc!=3){
         perror("The arguments should be: <N_PROCS> <N_SECS>");
-        return EXIT_FAILURE;
+        exit(EXIT_FAILURE);
     }
 
     n_procs= atoi(argv[1]);
     n_secs= atoi(argv[2]);
 
-    if(n_procs<0 || n_secs<0){
-        return EXIT_FAILURE;
-    }
-
-    if (signal(SIGINT, handle_siginit) == SIG_ERR) {
+    if (sigaction(SIGINT, &act, NULL) <0) {
         perror("Error al configurar manejador de señales");
         return EXIT_FAILURE;
     }
@@ -57,14 +73,15 @@ int main(int argc, char *argv[]){
 
     if(procFile==NULL){
         perror("Failed to open file");
-        return EXIT_FAILURE;
+        exit(EXIT_FAILURE);
     }
 
     pidsVoters= malloc(n_procs*sizeof(pidsVoters[0]));
 
     if(pidsVoters==NULL){
         perror("Failed to reserve memory");
-        return EXIT_FAILURE;
+        fclose(procFile);
+        exit(EXIT_FAILURE);
     }
 
     /*Create the voters processes*/
@@ -73,13 +90,14 @@ int main(int argc, char *argv[]){
 
         if(pidVoter==-1){
             perror("Failed to create voter");
+            fclose(procFile);
+            free(pidsVoters);
             exit(EXIT_FAILURE);
         }
 
         if(pidVoter==0){
+            signal(SIGINT, SIG_IGN);
             voter(); 
-            perror("Error al ejecutar el proceso votante");
-            exit(EXIT_FAILURE);
         }
         else{
             pidsVoters[procCounter]=pidVoter;
@@ -88,21 +106,12 @@ int main(int argc, char *argv[]){
 
     /*Write the voters PID in a file*/
     for(procCounter=0; procCounter<n_procs; procCounter++){
-        fprintf(procFile, "%d", pidsVoters[procCounter]);
+        fprintf(procFile, "%d\n", pidsVoters[procCounter]);
     }
+    fclose(procFile);
 
     /*Sistem is active during n_secs seconds*/
     sleep(n_secs);
-    printf("Ha pasado el tiempo\n");
 
-    /*Wait for all the childs*/
-    for(procCounter=0; procCounter<n_procs; procCounter++){
-        if (waitpid(pidsVoters[procCounter], &status, 0) >= 0) {
-            perror("waitpid (Child process)");
-        }
-    }
-
-    free(pidsVoters);
-    printf("Finishing by signal");
     exit(EXIT_SUCCESS);
 }
