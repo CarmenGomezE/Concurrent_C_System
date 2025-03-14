@@ -9,6 +9,21 @@
  *
  */
 
+/*Inicializar la máscara a 0, bloquear todas las señales que se van a usar*/
+/*Configurar el manejador*/
+/*Semáforo 1 de exclusiçon mutua para entrar en los ficheros*/
+/*Semáforo 2 para elegir al candidato*/
+/*Inicializar la simulación*/
+/*Iniciar votos-> crear procesos hijos que ejecuta voter, usa los dos semáforos, los cierra antes de terminar*/
+/*Cada proceso debería leer la estructura y participar
+- espera que le llegue la señal(bloqueado)
+- lee la red
+- intentar ser candidato, le pasa el semaforo y lo intentas bajar
+- CANDIDATO: envia la señal a los demás(tiene los pids), espera los votos, finalizo la ronda(libero el semaforo y señal)
+- VOTANTE: voto y lo guardo, y sigo hasta que pase algo que diga que pare*/
+/*El padre controla la simulación, y escribe la estructura en el fichero y espera las señales*/
+/*Configurar la */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -18,15 +33,67 @@
 #include <sys/signal.h>
 #include <sys/wait.h>
 #include "voter.h"
+#include <pthread.h>
+#include <semaphore.h>
 
-int n_procs;
-pid_t *pidsVoters;
+typedef struct {
+    pthread_mutex_t semaphoreMutex; 
+    sem_t semaphore;      
+    int shared_counter;
+} Semaphore;
 
+void initializeShemaphore(Semaphore *sh) {
+    if (pthread_mutex_init(&sh->semaphoreMutex, NULL) != 0) {
+        perror("Error al inicializar el mutex");
+        exit(EXIT_FAILURE);
+    }
 
-void handle_sigint(int sig){
-    fflush(stdout);
+    if (sem_init(&sh->semaphore, 0, 1) != 0) { 
+        perror("Error al inicializar el semáforo");
+        exit(EXIT_FAILURE);
+    }
+
+    sh->shared_counter = 0;
+}
+
+void destroyShemaphore(Semaphore *sh) {
+    pthread_mutex_destroy(&sh->semaphoreMutex);
+    sem_destroy(&sh->semaphore);
+}
+
+void handle_siginit(int sig){
+    pid_t *pidsVoters;
+    int n_procs, procCounter, status;
+    FILE *f =NULL; 
     
-    int procCounter, status;
+    f= fopen(INFO_SISTEMA, "r");
+
+    if (!f) {
+        perror("Error abriendo el archivo");
+        exit(EXIT_FAILURE);
+    }
+
+    if(fscanf(f, "%d", &n_procs) != 1) {
+        perror("Error leyendo n_procs");
+        fclose(f);
+        exit(EXIT_FAILURE);
+    }
+
+    pidsVoters= (int*) malloc (n_procs*sizeof(pidsVoters[0]));
+    if (!pidsVoters) {
+        perror("Error alocando memoria");
+        fclose(f);
+        exit(EXIT_FAILURE);
+    }
+
+    for (i = 0; i < n_procs; i++) {
+        if(fscanf(f, "%d", &pidsVoters[i]) != 1) {
+            perror("Error leyendo pidsVoters");
+            free(pidsVoters);
+            fclose(f);
+            exit(EXIT_FAILURE);
+        }
+    }
     
     for(procCounter=0; procCounter<n_procs; procCounter++){
         kill(pidsVoters[procCounter], SIGTERM);
@@ -51,8 +118,11 @@ int main(int argc, char *argv[]){
     int n_secs, procCounter;
     pid_t pidVoter;
     FILE *procFile;
+    int n_procs;
+    pid_t *pidsVoters;
+    Semaphore sh;
     struct sigaction act;
-    act.sa_handler = handle_sigint;
+    act.sa_handler = handle_siginit;
     sigemptyset(&(act.sa_mask));
     act.sa_flags = 0;
 
@@ -69,14 +139,14 @@ int main(int argc, char *argv[]){
         return EXIT_FAILURE;
     }
 
+    initializeShemaphore(&sh);
+
     procFile= fopen("ficheroProcesos.txt", "w");
 
     if(procFile==NULL){
         perror("Failed to open file");
         exit(EXIT_FAILURE);
     }
-
-    fprintf(procFile, "%d\n", n_procs);
 
     pidsVoters= malloc(n_procs*sizeof(pidsVoters[0]));
 
@@ -108,7 +178,6 @@ int main(int argc, char *argv[]){
 
     sleep(1);
 
-
     /*Write the voters PID in a file and send SIGUSR1 to the voters*/
     for(procCounter=0; procCounter<n_procs; procCounter++){
         fprintf(procFile, "%d\n", pidsVoters[procCounter]);
@@ -120,8 +189,6 @@ int main(int argc, char *argv[]){
         waitpid(pidsVoters[procCounter], NULL, 0);
     }
 
-    /*Sistem is active during n_secs seconds*/
-    sleep(n_secs);
-
+    destroyShemaphore(&sh);
     exit(EXIT_SUCCESS);
 }
