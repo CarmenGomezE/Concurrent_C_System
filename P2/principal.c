@@ -23,7 +23,7 @@ int n_procs;
 pid_t *pidsVoters;
 
 
-void handle_siginit(int sig){
+void handle_sigint(int sig){
     fflush(stdout);
     
     int procCounter, status;
@@ -52,7 +52,7 @@ int main(int argc, char *argv[]){
     pid_t pidVoter;
     FILE *procFile;
     struct sigaction act;
-    act.sa_handler = handle_siginit;
+    act.sa_handler = handle_sigint;
     sigemptyset(&(act.sa_mask));
     act.sa_flags = 0;
 
@@ -75,6 +75,8 @@ int main(int argc, char *argv[]){
         perror("Failed to open file");
         exit(EXIT_FAILURE);
     }
+
+    fprintf(procFile, "%d\n", n_procs);
 
     pidsVoters= malloc(n_procs*sizeof(pidsVoters[0]));
 
@@ -104,11 +106,19 @@ int main(int argc, char *argv[]){
         }
     }
 
-    /*Write the voters PID in a file*/
+    sleep(1);
+
+
+    /*Write the voters PID in a file and send SIGUSR1 to the voters*/
     for(procCounter=0; procCounter<n_procs; procCounter++){
         fprintf(procFile, "%d\n", pidsVoters[procCounter]);
+        kill(pidsVoters[procCounter], SIGUSR1);
     }
     fclose(procFile);
+
+    for (procCounter= 0; procCounter < n_procs; procCounter++) {
+        waitpid(pidsVoters[procCounter], NULL, 0);
+    }
 
     /*Sistem is active during n_secs seconds*/
     sleep(n_secs);
