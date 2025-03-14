@@ -15,6 +15,10 @@ void handle_sigusr1(int argSignal);
 
 void handle_sigterm(int argSignal);
 
+void handle_sigusr2(int argSignal);
+
+void read_systemInfo();
+
 int voter( );
 
 #endif
