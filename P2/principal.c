@@ -35,160 +35,147 @@
 #include "voter.h"
 #include <pthread.h>
 #include <semaphore.h>
+#include <fcntl.h>
 
-typedef struct {
-    pthread_mutex_t semaphoreMutex; 
-    sem_t semaphore;      
-    int shared_counter;
-} Semaphore;
-
-void initializeShemaphore(Semaphore *sh) {
-    if (pthread_mutex_init(&sh->semaphoreMutex, NULL) != 0) {
-        perror("Error al inicializar el mutex");
-        exit(EXIT_FAILURE);
-    }
-
-    if (sem_init(&sh->semaphore, 0, 1) != 0) { 
-        perror("Error al inicializar el semáforo");
-        exit(EXIT_FAILURE);
-    }
-
-    sh->shared_counter = 0;
-}
-
-void destroyShemaphore(Semaphore *sh) {
-    pthread_mutex_destroy(&sh->semaphoreMutex);
-    sem_destroy(&sh->semaphore);
-}
+int n_procs;
+int *pidsVoters;
+sem_t *sem;
 
 void handle_siginit(int sig){
-    pid_t *pidsVoters;
-    int n_procs, procCounter, status;
-    FILE *f =NULL; 
+    int i;
+    printf("Recibida señal de finalización.\n");
     
-    f= fopen(INFO_SISTEMA, "r");
-
-    if (!f) {
-        perror("Error abriendo el archivo");
-        exit(EXIT_FAILURE);
-    }
-
-    if(fscanf(f, "%d", &n_procs) != 1) {
-        perror("Error leyendo n_procs");
-        fclose(f);
-        exit(EXIT_FAILURE);
-    }
-
-    pidsVoters= (int*) malloc (n_procs*sizeof(pidsVoters[0]));
-    if (!pidsVoters) {
-        perror("Error alocando memoria");
-        fclose(f);
-        exit(EXIT_FAILURE);
-    }
-
     for (i = 0; i < n_procs; i++) {
-        if(fscanf(f, "%d", &pidsVoters[i]) != 1) {
-            perror("Error leyendo pidsVoters");
-            free(pidsVoters);
-            fclose(f);
-            exit(EXIT_FAILURE);
-        }
-    }
-    
-    for(procCounter=0; procCounter<n_procs; procCounter++){
-        kill(pidsVoters[procCounter], SIGTERM);
+        kill(pidsVoters[i], SIGTERM);
     }
 
     /*Wait for all the childs*/
-    for(procCounter=0; procCounter<n_procs; procCounter++){
-        if (waitpid(pidsVoters[procCounter], &status, 0)==-1) {
-            perror("Waitpid failed");
+    for (i = 0; i < n_procs; i++) {
+        if (waitpid(pidsVoters[i], NULL, 0) == -1) {
+            perror("Error esperando a los procesos Votante");
             free(pidsVoters);
             exit(EXIT_FAILURE);
         }
     }
 
+    sem_close(sem);
+    sem_unlink(NOMBRE_SEM1);
     free(pidsVoters);
     printf("Finishing by signal\n");
     exit(EXIT_SUCCESS);
 }
 
+void handle_sigalrm(int sig) {
+    int i;
+    printf("Tiempo de votación finalizado.\n");
+
+    for (i = 0; i < n_procs; i++) {
+        kill(pidsVoters[i], SIGTERM);
+    }
+
+    for (i = 0; i < n_procs; i++) {
+        waitpid(pidsVoters[i], NULL, 0);
+    }
+
+    sem_close(sem);
+    sem_unlink(NOMBRE_SEM1);
+    free(pidsVoters);
+    printf("Finishing by alarm\n");
+    exit(EXIT_SUCCESS);
+}
+
 /*Main program that implementates the principal process.*/
-int main(int argc, char *argv[]){
-    int n_secs, procCounter;
+int main(int argc, char *argv[]) {
+    int n_secs, i;
     pid_t pidVoter;
     FILE *procFile;
-    int n_procs;
-    pid_t *pidsVoters;
-    Semaphore sh;
-    struct sigaction act;
-    act.sa_handler = handle_siginit;
-    sigemptyset(&(act.sa_mask));
-    act.sa_flags = 0;
+    struct sigaction act1, act2;
 
-    if(argc!=3){
+    act1.sa_handler = handle_siginit;
+    sigemptyset(&(act1.sa_mask));
+    act1.sa_flags = 0;
+
+    act2.sa_handler = handle_sigalrm;
+    sigemptyset(&(act2.sa_mask));
+    act2.sa_flags = 0;
+
+    if (argc != 3) {
         perror("The arguments should be: <N_PROCS> <N_SECS>");
         exit(EXIT_FAILURE);
     }
 
-    n_procs= atoi(argv[1]);
-    n_secs= atoi(argv[2]);
+    n_procs = atoi(argv[1]);
+    n_secs = atoi(argv[2]);
 
-    if (sigaction(SIGINT, &act, NULL) <0) {
+    if (sigaction(SIGINT, &act1, NULL) < 0) {
         perror("Error al configurar manejador de señales");
         return EXIT_FAILURE;
     }
 
-    initializeShemaphore(&sh);
+    if (sigaction(SIGALRM, &act2, NULL) < 0) {
+        perror("Error al configurar manejador de señales");
+        return EXIT_FAILURE;
+    }
 
-    procFile= fopen("ficheroProcesos.txt", "w");
-
-    if(procFile==NULL){
-        perror("Failed to open file");
+    sem = sem_open(NOMBRE_SEM1, O_CREAT | O_EXCL, S_IRUSR | S_IWUSR, 1);
+    if (sem == SEM_FAILED) {
+        perror("Error creando semáforo");
         exit(EXIT_FAILURE);
     }
 
-    pidsVoters= malloc(n_procs*sizeof(pidsVoters[0]));
 
-    if(pidsVoters==NULL){
-        perror("Failed to reserve memory");
+    procFile = fopen(INFO_SISTEMA, "w");
+    if (!procFile) {
+        perror("Error abriendo archivo");
+        exit(EXIT_FAILURE);
+    }
+
+    fprintf(procFile, "%d\n", n_procs);
+
+    pidsVoters = (int*) malloc(n_procs*sizeof(pidsVoters[0]));
+    if (!pidsVoters) {
+        perror("Error alocando memoria");
         fclose(procFile);
         exit(EXIT_FAILURE);
     }
 
     /*Create the voters processes*/
-    for(procCounter=0; procCounter<n_procs; procCounter++){
-        pidVoter=fork();
+    for (i = 0; i < n_procs; i++) {
+        pidVoter = fork();
 
-        if(pidVoter==-1){
-            perror("Failed to create voter");
+        if (pidVoter == -1) {
+            perror("Error creando un proceso Votante");
             fclose(procFile);
             free(pidsVoters);
             exit(EXIT_FAILURE);
-        }
-
-        if(pidVoter==0){
+        } else if (pidVoter == 0) {
             signal(SIGINT, SIG_IGN);
             voter(); 
-        }
-        else{
-            pidsVoters[procCounter]=pidVoter;
+        } else {
+            pidsVoters[i] = pidVoter;
+            fprintf(procFile, "%d\n", pidsVoters[i]);
         }
     }
+
+    fclose(procFile);
 
     sleep(1);
 
-    /*Write the voters PID in a file and send SIGUSR1 to the voters*/
-    for(procCounter=0; procCounter<n_procs; procCounter++){
-        fprintf(procFile, "%d\n", pidsVoters[procCounter]);
-        kill(pidsVoters[procCounter], SIGUSR1);
-    }
-    fclose(procFile);
-
-    for (procCounter= 0; procCounter < n_procs; procCounter++) {
-        waitpid(pidsVoters[procCounter], NULL, 0);
+    /*Send SIGUSR1 to the voters*/
+    for (i = 0; i < n_procs; i++) {
+        kill(pidsVoters[i], SIGUSR1);
     }
 
-    destroyShemaphore(&sh);
+    alarm(n_secs);
+    
+    for (i = 0; i < n_procs; i++) {
+        waitpid(pidsVoters[i], NULL, 0);
+    }
+
+    sem_close(sem);
+    sem_unlink(NOMBRE_SEM1);
+
+    free(pidsVoters);
+
     exit(EXIT_SUCCESS);
 }

@@ -11,6 +11,11 @@
 #ifndef _VOTER_H
 #define _VOTER_H
 
+#define INFO_SISTEMA "ficheroProcesos.txt"
+#define VOTACION "ficheroVotacion.txt"
+#define NOMBRE_SEM1 "sem"
+#define NOMBRE_SEM2 "semCandidate"
+#define NOMBRE_SEM3 "semFile"
 void handle_sigusr1(int argSignal);
 
 void handle_sigterm(int argSignal);
