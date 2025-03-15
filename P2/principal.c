@@ -117,7 +117,7 @@ int main(int argc, char *argv[]) {
         return EXIT_FAILURE;
     }
 
-    sem = sem_open(NOMBRE_SEM1, O_CREAT | O_EXCL, S_IRUSR | S_IWUSR, 1);
+    sem = sem_open(NOMBRE_SEM1, O_CREAT, S_IRUSR | S_IWUSR, 1);
     if (sem == SEM_FAILED) {
         perror("Error creando semáforo");
         exit(EXIT_FAILURE);
@@ -157,7 +157,8 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    fclose(procFile);
+    if (getpid() != 0) {
+        fclose(procFile);
 
     sleep(1);
 
@@ -178,4 +179,5 @@ int main(int argc, char *argv[]) {
     free(pidsVoters);
 
     exit(EXIT_SUCCESS);
+    }
 }
