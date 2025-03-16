@@ -94,8 +94,10 @@ void handle_sigusr1(int argSig) {
         }
  
         for (i = 0; i < n_procsV; i++) {
-            if (fscanf(f, "%d", &votes[i]) == 1) {
-                count++;
+            if (pidsVotersV[i] != getpid()) {
+                if (fscanf(f, "%d", &votes[i]) == 1) {
+                    count++;
+                }
             }
         }
  
@@ -112,7 +114,7 @@ void handle_sigusr1(int argSig) {
  
     printf("Candidate %d => [", getpid());
     fflush(stdout);
-    for (i = 0; i < n_procsV; i++) {
+    for (i = 0; i < count; i++) {
         if (votes[i] == 1) {
             printf(" Y");
             fflush(stdout);

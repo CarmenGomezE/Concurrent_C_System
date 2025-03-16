@@ -160,24 +160,24 @@ int main(int argc, char *argv[]) {
     if (getpid() != 0) {
         fclose(procFile);
 
-    sleep(1);
+        sleep(1);
 
-    /*Send SIGUSR1 to the voters*/
-    for (i = 0; i < n_procs; i++) {
-        kill(pidsVoters[i], SIGUSR1);
-    }
+        /*Send SIGUSR1 to the voters*/
+        for (i = 0; i < n_procs; i++) {
+            kill(pidsVoters[i], SIGUSR1);
+        }
 
-    alarm(n_secs);
-    
-    for (i = 0; i < n_procs; i++) {
-        waitpid(pidsVoters[i], NULL, 0);
-    }
+        alarm(n_secs);
+        
+        for (i = 0; i < n_procs; i++) {
+            waitpid(pidsVoters[i], NULL, 0);
+        }
 
-    sem_close(sem);
-    sem_unlink(NOMBRE_SEM1);
+        sem_close(sem);
+        sem_unlink(NOMBRE_SEM1);
 
-    free(pidsVoters);
+        free(pidsVoters);
 
-    exit(EXIT_SUCCESS);
+        exit(EXIT_SUCCESS);
     }
 }
