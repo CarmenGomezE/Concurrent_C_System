@@ -45,15 +45,6 @@ void handle_siginit(int sig){
         kill(pidsVoters[i], SIGTERM);
     }
 
-    /*Wait for all the childs*/
-    for (i = 0; i < n_procs; i++) {
-        if (waitpid(pidsVoters[i], NULL, 0) == -1) {
-            perror("Error esperando a los procesos Votante");
-            free(pidsVoters);
-            exit(EXIT_FAILURE);
-        }
-    }
-
     free(pidsVoters);
     printf("Finishing by signal\n");
     exit(EXIT_SUCCESS);
@@ -159,6 +150,4 @@ int main(int argc, char *argv[]) {
     }
 
     free(pidsVoters);
-
-    exit(EXIT_SUCCESS);
 }

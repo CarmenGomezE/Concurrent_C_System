@@ -18,12 +18,13 @@
 #include <sys/wait.h>
 #include "voter.h"
 #include <semaphore.h>
+#include <pthread.h>
 #include <fcntl.h>
  
 int n_procsV;
 int *pidsVotersV;
-sem_t *semCandidate;
-sem_t *semFile;
+pthread_mutex_t semCandidate;
+pthread_mutex_t semFile;
  
 void read_systemInfo() {
     int i;
@@ -64,7 +65,7 @@ void handle_sigusr1(int argSig) {
     int votes[n_procsV];
  
     read_systemInfo();
-    sem_wait(semCandidate);
+    pthread_mutex_lock(&semCandidate);
 
     for (i = 0; i < n_procsV; i++) {
         if (pidsVotersV[i] != getpid()) {
@@ -75,11 +76,11 @@ void handle_sigusr1(int argSig) {
     while (count < n_procsV - 1) {
         usleep(1000);
 
-        sem_wait(semFile);
+        pthread_mutex_lock(&semFile);
         fd = open(VOTACION, O_RDONLY);
         if (fd== -1) {
             perror("Error abriendo archivo");
-            sem_post(semFile);
+            pthread_mutex_unlock(&semFile);
             free(pidsVotersV);
             exit(EXIT_FAILURE);
         }
@@ -90,7 +91,7 @@ void handle_sigusr1(int argSig) {
 
         if (bytesRead < 0) {
             perror("Error leyendo archivo");
-            sem_post(semFile);
+            pthread_mutex_unlock(&semFile);
             free(pidsVotersV);
             exit(EXIT_FAILURE);
         }
@@ -108,12 +109,12 @@ void handle_sigusr1(int argSig) {
         fd = open(VOTACION, O_WRONLY | O_TRUNC, 0644);
         if (fd == -1) {
             perror("Error vaciando archivo");
-            sem_post(semFile);
+            pthread_mutex_unlock(&semFile);
             free(pidsVotersV);
             exit(EXIT_FAILURE);
         }
         close(fd);
-        sem_post(semFile);
+        pthread_mutex_unlock(&semFile);
     }
  
     printf("Candidate %d => [", getpid());
@@ -141,19 +142,21 @@ void handle_sigusr1(int argSig) {
 
     usleep(250000);
 
+    pthread_mutex_unlock(&semCandidate); 
+    
     for (i = 0; i < n_procsV; i++) {
         if (pidsVotersV[i] != getpid()) {
             kill(pidsVotersV[i], SIGUSR1);
         }
     }
 
-    sem_post(semCandidate);  
+     
 }
  
 void handle_sigusr2(int argSig) {
     int vote = rand() % 2;
 
-    sem_wait(semFile);
+    pthread_mutex_lock(&semFile);
     int fd = open(VOTACION, O_WRONLY | O_APPEND | O_CREAT, 0644);
     if (fd == -1) {
         perror("Error abriendo archivo");
@@ -167,12 +170,12 @@ void handle_sigusr2(int argSig) {
     fsync(fd);
     close(fd);
     
-    sem_post(semFile);
+    pthread_mutex_unlock(&semFile);
 }
  
 void handle_sigterm(int argSig) {
-    sem_close(semFile);
-    sem_close(semCandidate);
+    pthread_mutex_destroy(&semFile);
+    pthread_mutex_destroy(&semCandidate);
     free(pidsVotersV);
     exit(EXIT_SUCCESS);
 }
@@ -213,16 +216,14 @@ int voter( ) {
         exit(EXIT_FAILURE);
     }
 
-    sem_unlink(NOMBRE_SEM3);
-    semFile = sem_open(NOMBRE_SEM3, O_CREAT, S_IRUSR | S_IWUSR, 1);
-    if (semFile == SEM_FAILED) {
+    pthread_mutex_destroy(&semFile);
+    if (pthread_mutex_init(&semFile, NULL)!=0) {
         perror("Error inicializando semáforo");
         exit(EXIT_FAILURE);
     }
     
-    sem_unlink(NOMBRE_SEM2);
-    semCandidate = sem_open(NOMBRE_SEM2, O_CREAT, S_IRUSR | S_IWUSR, 1);
-    if (semCandidate == SEM_FAILED) {
+    pthread_mutex_destroy(&semCandidate);
+    if (pthread_mutex_init(&semCandidate, NULL)!=0) {
         perror("Error inicializando semáforo");
         exit(EXIT_FAILURE);
     }
