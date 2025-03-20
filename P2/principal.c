@@ -34,12 +34,10 @@
 #include <sys/wait.h>
 #include "voter.h"
 #include <pthread.h>
-#include <semaphore.h>
 #include <fcntl.h>
 
 int n_procs;
 int *pidsVoters;
-sem_t *sem;
 
 void handle_siginit(int sig){
     int i;
@@ -58,8 +56,6 @@ void handle_siginit(int sig){
         }
     }
 
-    sem_close(sem);
-    sem_unlink(NOMBRE_SEM1);
     free(pidsVoters);
     printf("Finishing by signal\n");
     exit(EXIT_SUCCESS);
@@ -77,8 +73,6 @@ void handle_sigalrm(int sig) {
         waitpid(pidsVoters[i], NULL, 0);
     }
 
-    sem_close(sem);
-    sem_unlink(NOMBRE_SEM1);
     free(pidsVoters);
     printf("Finishing by alarm\n");
     exit(EXIT_SUCCESS);
@@ -117,16 +111,9 @@ int main(int argc, char *argv[]) {
         return EXIT_FAILURE;
     }
 
-    sem = sem_open(NOMBRE_SEM1, O_CREAT, S_IRUSR | S_IWUSR, 1);
-    if (sem == SEM_FAILED) {
-        perror("Error creando semáforo");
-        exit(EXIT_FAILURE);
-    }
-
-
     procFile = fopen(INFO_SISTEMA, "w");
     if (!procFile) {
-        perror("Error abriendo archivo");
+        perror("Error abriendo archiv1o");
         exit(EXIT_FAILURE);
     }
 
@@ -172,9 +159,6 @@ int main(int argc, char *argv[]) {
         for (i = 0; i < n_procs; i++) {
             waitpid(pidsVoters[i], NULL, 0);
         }
-
-        sem_close(sem);
-        sem_unlink(NOMBRE_SEM1);
 
         free(pidsVoters);
 

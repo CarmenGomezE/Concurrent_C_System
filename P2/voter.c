@@ -27,52 +27,44 @@ sem_t *semFile;
  
 void read_systemInfo() {
     int i;
-    FILE *f = fopen(INFO_SISTEMA, "r");
-    if (!f) {
+    int fd = open(INFO_SISTEMA, O_RDONLY);
+    if (fd == -1) {
         perror("Error abriendo el archivo");
         exit(EXIT_FAILURE);
     }
- 
-    if(fscanf(f, "%d", &n_procsV) != 1) {
+
+    char buffer[256];
+    ssize_t bytesRead = read(fd, buffer, sizeof(buffer) - 1);
+    if (bytesRead <= 0) {
         perror("Error leyendo n_procsV");
-        fclose(f);
+        close(fd);
         exit(EXIT_FAILURE);
     }
- 
-    pidsVotersV = (int*) malloc (n_procsV*sizeof(pidsVotersV[0]));
+    buffer[bytesRead] = '\0';
+
+    char *ptr = buffer;
+    n_procsV = strtol(ptr, &ptr, 10);
+    pidsVotersV = (int*) malloc(n_procsV * sizeof(pidsVotersV[0]));
     if (!pidsVotersV) {
         perror("Error alocando memoria");
-        fclose(f);
+        close(fd);
         exit(EXIT_FAILURE);
     }
- 
+
     for (i = 0; i < n_procsV; i++) {
-        if(fscanf(f, "%d", &pidsVotersV[i]) != 1) {
-            perror("Error leyendo pidsVotersV");
-            free(pidsVotersV);
-            fclose(f);
-            exit(EXIT_FAILURE);
-        }
+        pidsVotersV[i] = strtol(ptr, &ptr, 10);
     }
- 
-    fclose(f);
+
+    close(fd);
 }
  
 void handle_sigusr1(int argSig) {
     int i, count = 0, yes = 0, no = 0;
-    FILE *f;
+    int fd;
     int votes[n_procsV];
  
-    printf("El proceso Votante %d ha recibido la señal SIGUSR1.\n", getpid());
-    fflush(stdout);
     read_systemInfo();
-    printf("El proceso Votante %d ha leído la información del sistema.\n", getpid());
-    fflush(stdout);
-
     sem_wait(semCandidate);
-    
-    printf("El proceso Votante %d es el Candidato.\n", getpid());
-    fflush(stdout);
 
     for (i = 0; i < n_procsV; i++) {
         if (pidsVotersV[i] != getpid()) {
@@ -84,31 +76,43 @@ void handle_sigusr1(int argSig) {
         usleep(1000);
 
         sem_wait(semFile);
- 
-        f = fopen(VOTACION, "r");
-        if (!f) {
+        fd = open(VOTACION, O_RDONLY);
+        if (fd== -1) {
             perror("Error abriendo archivo");
             sem_post(semFile);
             free(pidsVotersV);
             exit(EXIT_FAILURE);
         }
- 
+
+        char buf[256];
+        ssize_t bytesRead = read(fd, buf, sizeof(buf) - 1);
+        close(fd);
+
+        if (bytesRead < 0) {
+            perror("Error leyendo archivo");
+            sem_post(semFile);
+            free(pidsVotersV);
+            exit(EXIT_FAILURE);
+        }
+
+        buf[bytesRead] = '\0';
+        char *ptr = buf;
         for (i = 0; i < n_procsV; i++) {
             if (pidsVotersV[i] != getpid()) {
-                if (fscanf(f, "%d", &votes[i]) == 1) {
-                    count++;
+                if (*ptr) {
+                    votes[count++] = strtol(ptr, &ptr, 10);
                 }
             }
         }
- 
-        fclose(f);
-        if(!(f = fopen(VOTACION, "w"))) {
+
+        fd = open(VOTACION, O_WRONLY | O_TRUNC, 0644);
+        if (fd == -1) {
             perror("Error vaciando archivo");
             sem_post(semFile);
             free(pidsVotersV);
             exit(EXIT_FAILURE);
         }
-        fclose(f);
+        close(fd);
         sem_post(semFile);
     }
  
@@ -148,18 +152,21 @@ void handle_sigusr1(int argSig) {
  
 void handle_sigusr2(int argSig) {
     int vote = rand() % 2;
-    printf("El proceso Votante %d ha recibido la señal SIGUSR2.\n", getpid());
 
     sem_wait(semFile);
-    FILE *f = fopen(VOTACION, "a");
-    if (!f) {
+    int fd = open(VOTACION, O_WRONLY | O_APPEND | O_CREAT, 0644);
+    if (fd == -1) {
         perror("Error abriendo archivo");
         free(pidsVotersV);
         exit(EXIT_FAILURE);
     }
- 
-    fprintf(f, "%d\n", vote);
-    fclose(f);
+
+    char buffer[4];
+    snprintf(buffer, sizeof(buffer), "%d\n", vote);
+    write(fd, buffer, strlen(buffer));
+    fsync(fd);
+    close(fd);
+    
     sem_post(semFile);
 }
  
@@ -186,7 +193,7 @@ int voter( ) {
     sigemptyset(&(act3.sa_mask));
     act3.sa_flags = 0;
  
-    sigset_t mask;
+    sigset_t set;
  
     if (sigaction(SIGUSR1, &act1, NULL) < 0) {
         perror("Error al configurar manejador de señales");
@@ -201,8 +208,11 @@ int voter( ) {
         exit(EXIT_FAILURE);
     }
  
-    sigemptyset(&mask);
-    sigprocmask(SIG_BLOCK, &mask, NULL);
+    sigfillset(&set); 
+    sigdelset(&set, SIGUSR1);
+    sigdelset(&set, SIGTERM); 
+    sigdelset(&set, SIGUSR2);
+    sigprocmask(SIG_BLOCK, &set, NULL);
 
     sem_unlink(NOMBRE_SEM3);
     semFile = sem_open(NOMBRE_SEM3, O_CREAT, S_IRUSR | S_IWUSR, 1);
@@ -218,11 +228,8 @@ int voter( ) {
         exit(EXIT_FAILURE);
     }
  
-    printf("El proceso Votante %d está listo.\n", getpid());
-    fflush(stdout);
- 
     while (1) {
-        sigsuspend(&mask);
+        sigsuspend(&set);
     }
          
     exit(EXIT_SUCCESS);
