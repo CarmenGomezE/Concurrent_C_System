@@ -193,7 +193,12 @@ int voter( ) {
     sigemptyset(&(act3.sa_mask));
     act3.sa_flags = 0;
  
-    sigset_t set;
+    sigset_t set, old_set;
+    sigemptyset(&set); 
+    sigaddset(&set, SIGUSR1);
+    sigaddset(&set, SIGTERM);
+    sigaddset(&set, SIGUSR2);
+    sigprocmask(SIG_BLOCK, &set, &old_set); 
  
     if (sigaction(SIGUSR1, &act1, NULL) < 0) {
         perror("Error al configurar manejador de señales");
@@ -207,12 +212,6 @@ int voter( ) {
         perror("Error al configurar manejador de señales");
         exit(EXIT_FAILURE);
     }
- 
-    sigfillset(&set); 
-    sigdelset(&set, SIGUSR1);
-    sigdelset(&set, SIGTERM); 
-    sigdelset(&set, SIGUSR2);
-    sigprocmask(SIG_BLOCK, &set, NULL);
 
     sem_unlink(NOMBRE_SEM3);
     semFile = sem_open(NOMBRE_SEM3, O_CREAT, S_IRUSR | S_IWUSR, 1);
@@ -227,9 +226,11 @@ int voter( ) {
         perror("Error inicializando semáforo");
         exit(EXIT_FAILURE);
     }
+
+    sigprocmask(SIG_UNBLOCK, &set, NULL);
  
     while (1) {
-        sigsuspend(&set);
+        sigsuspend(&old_set);
     }
          
     exit(EXIT_SUCCESS);
