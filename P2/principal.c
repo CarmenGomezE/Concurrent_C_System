@@ -95,6 +95,10 @@ int main(int argc, char *argv[]) {
     }
     n_procs = atoi(argv[1]);
     n_secs = atoi(argv[2]);
+    if (n_procs <= 0 || n_secs <= 0) {
+        perror("The arguments should be positive");
+        exit(EXIT_FAILURE);
+    }
 
     /*Configurate the handler of the SIGINT signal*/
     if (sigaction(SIGINT, &act1, NULL) < 0) {
