@@ -11,11 +11,15 @@
 #ifndef _VOTER_H
 #define _VOTER_H
 
+#include <semaphore.h>
+
 #define INFO_SISTEMA "ficheroProcesos.txt"
 #define VOTACION "ficheroVotacion.txt"
-#define NOMBRE_SEM1 "sem"
-#define NOMBRE_SEM2 "semCandidate"
-#define NOMBRE_SEM3 "semFile"
+
+#define SEM_CANDIDATE "semCandidate"
+#define SEM_FILE "semFile"
+#define SEM_STDOUT "semStdout"
+
 void handle_sigusr1(int argSignal);
 
 void handle_sigterm(int argSignal);
@@ -24,6 +28,6 @@ void handle_sigusr2(int argSignal);
 
 void read_systemInfo();
 
-int voter( );
+int voter();
 
 #endif
