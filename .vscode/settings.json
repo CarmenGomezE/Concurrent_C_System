@@ -5,6 +5,8 @@
         "string.h": "c",
         "signal.h": "c",
         "unistd.h": "c",
-        "fcntl.h": "c"
+        "fcntl.h": "c",
+        "types.h": "c",
+        "pthread.h": "c"
     }
 }
