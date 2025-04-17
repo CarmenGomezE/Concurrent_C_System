@@ -3,6 +3,6 @@
 
 #include "memoria.h"
 
-void comprobador(MemoriaCompartida *mem);
+void comprobador(MemoriaCompartida *mem, int lag);
 
 #endif

@@ -1,14 +1,14 @@
 #include <stdio.h>
 #include <unistd.h>
-#include <string.h>
 #include "comprobador.h"
 
 int comprobar(long objetivo, long solucion) {
     return objetivo == solucion;
 }
 
-void comprobador(MemoriaCompartida *mem) {
+void comprobador(MemoriaCompartida *mem, int lag_ms) {
     int contador = 0;
+
     while (1) {
         Bloque b;
         b.objetivo = contador;
@@ -16,7 +16,7 @@ void comprobador(MemoriaCompartida *mem) {
         b.es_valido = comprobar(b.objetivo, b.solucion);
 
         if (contador == 10) {
-            b.es_valido = -1;
+            b.es_valido = -1; 
         }
 
         sem_wait(&mem->empty);
@@ -30,9 +30,10 @@ void comprobador(MemoriaCompartida *mem) {
 
         if (b.es_valido == -1) break;
 
-        printf("[Comprobador] Enviado: %ld -> %ld (%s)\n", b.objetivo, b.solucion, b.es_valido ? "correcto" : "incorrecto");
+        printf("[Comprobador] Enviado: %ld -> %ld (%s)\n", b.objetivo, b.solucion,
+               b.es_valido ? "correcto" : "incorrecto");
 
-        usleep(1000 * 500);
+        usleep(lag_ms * 1000);
         contador++;
     }
 }

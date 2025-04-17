@@ -5,14 +5,37 @@
 #include <sys/mman.h>
 #include <errno.h>
 #include <sys/stat.h>
+#include <string.h>
+#include <signal.h>
+
 #include "memoria.h"
 #include "monitor.h"
 #include "comprobador.h"
 
+MemoriaCompartida *mem = NULL;
+int creador = 0;
+
+void limpiar_recursos() {
+    if (mem && creador) {
+        sem_destroy(&mem->mutex);
+        sem_destroy(&mem->empty);
+        sem_destroy(&mem->fill);
+        shm_unlink(SHM_NAME);
+        printf("\n[INFO] Recursos liberados correctamente.\n");
+    }
+}
+
+void manejar_senial(int sig) {
+    limpiar_recursos();
+    exit(0);
+}
+
 int main(int argc, char *argv[]) {
-    int fd, creador = 0;
-    MemoriaCompartida *mem;
+    int fd;
     int lag = (argc == 2) ? atoi(argv[1]) : 500;
+    if (lag < 10) lag = 10;  // Mínimo razonable
+
+    signal(SIGINT, manejar_senial);
 
     fd = shm_open(SHM_NAME, O_CREAT | O_EXCL | O_RDWR, 0666);
     if (fd == -1) {
@@ -22,7 +45,10 @@ int main(int argc, char *argv[]) {
             exit(EXIT_FAILURE);
         }
     } else {
-        ftruncate(fd, MEM_SIZE);
+        if (ftruncate(fd, MEM_SIZE) == -1) {
+            perror("ftruncate");
+            exit(EXIT_FAILURE);
+        }
         creador = 1;
     }
 
@@ -37,10 +63,11 @@ int main(int argc, char *argv[]) {
         sem_init(&mem->empty, 1, BUFFER_SIZE);
         sem_init(&mem->fill, 1, 0);
         mem->in = mem->out = 0;
-        comprobador(mem);
+        comprobador(mem, lag);
     } else {
         monitor(mem, lag);
     }
 
+    limpiar_recursos();
     return 0;
 }
