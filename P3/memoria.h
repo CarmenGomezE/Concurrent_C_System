@@ -1,12 +1,25 @@
 #ifndef MEMORIA_H
 #define MEMORIA_H
 
-#define SHM_NAME "/memoria_monitor"
+#include <semaphore.h>
+
+#define BUFFER_SIZE 6
+#define SHM_NAME "/memoria_compartida"
 #define MEM_SIZE sizeof(MemoriaCompartida)
 
 typedef struct {
-    int bloque_valido;
-    char mensaje[256];
+    long objetivo;
+    long solucion;
+    int es_valido;
+} Bloque;
+
+typedef struct {
+    sem_t mutex;
+    sem_t empty;
+    sem_t fill;
+    Bloque buffer[BUFFER_SIZE];
+    int in;
+    int out;
 } MemoriaCompartida;
 
-#endif
+#endif 

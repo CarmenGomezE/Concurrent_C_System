@@ -3,14 +3,23 @@
 #include "monitor.h"
 
 void monitor(MemoriaCompartida *mem, int lag_ms) {
-    printf(">> Soy el Monitor\n");
     while (1) {
-        if (mem->bloque_valido) {
-            printf("[Monitor] Mensaje recibido: %s\n", mem->mensaje);
-            mem->bloque_valido = 0;
-        } else {
-            printf("[Monitor] Esperando nuevo mensaje...\n");
-        }
+        sem_wait(&mem->fill);
+        sem_wait(&mem->mutex);
+
+        Bloque b = mem->buffer[mem->out];
+        mem->out = (mem->out + 1) % BUFFER_SIZE;
+
+        sem_post(&mem->mutex);
+        sem_post(&mem->empty);
+
+        if (b.es_valido == -1) break;
+
+        if (b.es_valido)
+            printf("Solution accepted: %08ld --> %08ld\n", b.objetivo, b.solucion);
+        else
+            printf("Solution rejected: %08ld !-> %08ld\n", b.objetivo, b.solucion);
+
         usleep(lag_ms * 1000);
     }
 }
