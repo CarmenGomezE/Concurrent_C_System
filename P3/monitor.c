@@ -38,6 +38,6 @@ void monitor(MemoriaCompartida *mem, int lag) {
         else
             printf("Solution rejected: %08ld !-> %08ld\n", b.objetivo, b.solucion);
 
-        usleep(lag_ms * 1000);
+        usleep(lag*1000);
     }
 }
