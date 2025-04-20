@@ -7,6 +7,8 @@
         "unistd.h": "c",
         "fcntl.h": "c",
         "types.h": "c",
-        "pthread.h": "c"
+        "pthread.h": "c",
+        "monitor.h": "c",
+        "stdio.h": "c"
     }
 }

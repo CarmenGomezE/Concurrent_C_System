@@ -20,7 +20,6 @@ typedef struct {
     sem_t sem_mutex;   
     sem_t sem_votacion; 
     sem_t sem_finalizado;
-
 } Sistema;
 
 #endif
