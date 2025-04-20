@@ -1,3 +1,13 @@
+/**
+ * @file mainMonitor.c
+ * @author María Pozo, Carmen Gómez.
+ * @brief Implementation of the main process that executes the monitor program.
+ * @version 2.0
+ * @date 2025-02-24
+ *
+ * @copyright Copyright (c) 2022
+ *
+ */
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -15,6 +25,7 @@
 MemoriaCompartida *mem = NULL;
 int creador = 0;
 
+/*Function for resource cleaning. */
 void limpiar_recursos() {
     if (mem && creador) {
         sem_destroy(&mem->mutex);
@@ -24,12 +35,14 @@ void limpiar_recursos() {
     }
 }
 
+/*Function for int signal. */
 void manejar_senial(int sig) {
     (void)sig;
     limpiar_recursos();
     exit(0);
 }
 
+/*Main program that implements monitor and comprobador processes.*/
 int main(int argc, char *argv[]) {
     int fd, lag; 
 

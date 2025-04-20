@@ -1,3 +1,13 @@
+/**
+ * @file minero.c
+ * @author María Pozo, Carmen Gómez.
+ * @brief Implementation of the miner process.
+ * @version 2.0
+ * @date 2025-02-24
+ *
+ * @copyright Copyright (c) 2022
+ *
+ */
 #include <mqueue.h>
 #include <sys/mman.h>
 #include <errno.h>
@@ -11,9 +21,10 @@
 #include <string.h>
 #include "memoria.h"
 
-mqd_t mq;
-FILE *f;
+mqd_t mq; /*Shared memory segment. */
+FILE *f; /*File with random solutions. */
 
+/*Function for int signal. */
 void manejar_senial(int sig) {
     (void)sig;
     if (f) fclose(f);
@@ -24,6 +35,7 @@ void manejar_senial(int sig) {
     exit(0);
 }
 
+/*Main program that implements miner process. */
 int main(int argc, char *argv[]) {
     int rounds, lag, i;
     struct mq_attr atributos;

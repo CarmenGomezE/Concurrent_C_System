@@ -1,8 +1,19 @@
+/**
+ * @file monitor.c
+ * @author María Pozo, Carmen Gómez.
+ * @brief Implementation of the monitor process.
+ * @version 2.0
+ * @date 2025-02-24
+ *
+ * @copyright Copyright (c) 2022
+ *
+ */
 #include <stdio.h>
 #include <unistd.h>
 #include "monitor.h"
 
-void monitor(MemoriaCompartida *mem, int lag_ms) {
+/*Implementation of the monitor process. */
+void monitor(MemoriaCompartida *mem, int lag) {
     Bloque b;
 
     printf("[%d] Printing blocks...\n", getpid());

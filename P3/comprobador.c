@@ -1,12 +1,24 @@
+/**
+ * @file comprobador.c
+ * @author María Pozo, Carmen Gómez.
+ * @brief Implementation of the comprobador process.
+ * @version 2.0
+ * @date 2025-02-24
+ *
+ * @copyright Copyright (c) 2022
+ *
+ */
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include "comprobador.h"
 
+/*Function to check the objective and the solution. */
 int comprobar(long objetivo, long solucion) {
     return objetivo < solucion;
 }
 
+/*Implementation of the comprobador process. */
 void comprobador(MemoriaCompartida *mem, int lag) {
     mqd_t mq;
     Bloque b;
