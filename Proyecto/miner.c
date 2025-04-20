@@ -26,6 +26,7 @@
 static SharedData *shared_data;
 static sem_t *sem_init;
 static sem_t *sem_winner;
+static sem_t *sem_vote;
 static volatile sig_atomic_t start_mining = 0;
 static volatile sig_atomic_t stop_requested = 0;
 static volatile sig_atomic_t is_winner = 0;
@@ -104,11 +105,20 @@ void miner(int seconds, int n_threads) {
         exit(EXIT_FAILURE);
     }
 
+    sem_vote = sem_open(SEM_VOTE_NAME, O_CREAT, 0666, 1); 
+    if (sem_vote == SEM_FAILED) {
+        perror("sem_open vote");
+        exit(EXIT_FAILURE);
+    }
+
     sem_wait(sem_init);
     if (first_miner && !shared_data->initialized) {
         shared_data->initialized = 1;
         shared_data->miner_count = 0;
         shared_data->block_target = BLOCK_TARGET;
+        shared_data->winner_pid = -1; 
+        shared_data->vote_count = 0;
+        shared_data->vote_approved = 0;
         printf("🔧 Primer minero inicializa el sistema.\n");
     } else {
         wait_for_initialization();
@@ -199,22 +209,10 @@ void miner(int seconds, int n_threads) {
         shared_data->block_target = solution;
     }
 
-    close(fd1[1]);
-    close(fd2[0]);
-
     if (is_winner) {
-        sem_wait(sem_winner);
-        if (shared_data->winner_pid == -1) {
-            shared_data->winner_pid = getpid();
-            printf("Minero PID %d se ha proclamado ganador de la ronda.\n", getpid());
-        } else {
-            printf("Otro minero ya ha ganado. Minero PID %d se convierte en perdedor.\n", getpid());
-        }
-        sem_post(sem_winner);
-    }
-
-    if (!is_winner) {
-        printf("Minero PID %d ha perdido la ronda.\n", getpid());
+        ganador();  
+    } else {
+        perdedor(); 
     }
 
     int status;
