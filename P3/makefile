@@ -1,33 +1,31 @@
-# Nombre del ejecutable
-TARGET = monitor
+# Nombres de los ejecutables
+TARGETS = monitor miner
 
 # Archivos fuente
-SRCS = mainMonitor.c comprobador.c monitor.c
-
-# Archivos objeto
-OBJS = $(SRCS:.c=.o)
+SRCS_MONITOR = mainMonitor.c comprobador.c monitor.c
+SRCS_MINER = minero.c
 
 # Compilador y flags
 CC = gcc
-CFLAGS = -Wall -lrt
+CFLAGS = -Wall -Wextra
+LDFLAGS = -lrt -lpthread
 
 # Regla por defecto
-all: $(TARGET)
+all: $(TARGETS)
 
-# Cómo construir el ejecutable
-$(TARGET): $(OBJS)
-	$(CC) $(CFLAGS) -o $(TARGET) $(OBJS)
+# Reglas de construcción
+monitor: $(SRCS_MONITOR)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
-# Regla para archivos objeto
-%.o: %.c
-	$(CC) $(CFLAGS) -c $< -o $@
+miner: $(SRCS_MINER)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
-# Limpiar archivos temporales
+# Limpieza
 clean:
-	rm -f $(OBJS) $(TARGET)
+	rm -f $(TARGETS)
 
-# Limpiar también memoria compartida (opcional)
 purge: clean
-	-@shm_unlink /memoria_monitor || true
+	-@shm_unlink /memoria_monitor 2>/dev/null || true
+	-@mq_unlink /blockchain_queue 2>/dev/null || true
 
 .PHONY: all clean purge

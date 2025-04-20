@@ -21,19 +21,25 @@ void limpiar_recursos() {
         sem_destroy(&mem->empty);
         sem_destroy(&mem->fill);
         shm_unlink(SHM_NAME);
-        printf("\n[INFO] Recursos liberados correctamente.\n");
     }
 }
 
 void manejar_senial(int sig) {
+    (void)sig;
     limpiar_recursos();
     exit(0);
 }
 
 int main(int argc, char *argv[]) {
-    int fd;
-    int lag = (argc == 2) ? atoi(argv[1]) : 500;
-    if (lag < 10) lag = 10;  // Mínimo razonable
+    int fd, lag; 
+
+    if (argc != 2) {
+        fprintf(stderr, "Uso: %s <LAG>\n", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    lag = atoi(argv[1]);
+    if (lag < 10) lag = 10;
 
     signal(SIGINT, manejar_senial);
 
