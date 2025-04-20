@@ -34,7 +34,7 @@ void comprobador(MemoriaCompartida *mem, int lag) {
     while (1) {
         if (mq_receive(mq, (char *)&b, sizeof(Bloque), NULL) == -1) {
             perror("mq_receive");
-            exit(EXIT_FAILURE);
+            return;
         }
 
         if (b.es_valido == -1) {
