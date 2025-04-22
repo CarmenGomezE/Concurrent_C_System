@@ -18,4 +18,4 @@ miner: $(SRCS_MINER)
 clean:
 	rm -f $(TARGETS)
 
-.PHONY: all clean 
+.PHONY: all clean
