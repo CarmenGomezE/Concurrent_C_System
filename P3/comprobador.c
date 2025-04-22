@@ -15,7 +15,7 @@
 
 /*Function to check the objective and the solution. */
 int comprobar(long objetivo, long solucion) {
-    return objetivo < solucion;
+    return objetivo - solucion;
 }
 
 /*Implementation of the comprobador process. */

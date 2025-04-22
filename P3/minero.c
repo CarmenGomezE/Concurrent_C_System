@@ -83,7 +83,6 @@ int main(int argc, char *argv[]) {
             break;
         }
         b.objetivo = objetivo;
-        b.es_valido = 1;
 
 
         if (mq_send(mq, (char *)&b, sizeof(Bloque), 0) == -1) {
@@ -91,9 +90,9 @@ int main(int argc, char *argv[]) {
             break;
         }
 
-        objetivo = b.solucion;
-
         usleep(lag*1000);
+        
+        objetivo = b.solucion;
     }
 
     memset(&b, 0, sizeof(Bloque));
