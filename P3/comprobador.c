@@ -23,7 +23,7 @@ void comprobador(MemoriaCompartida *mem, int lag) {
     mqd_t mq;
     Bloque b;
 
-    mq = mq_open(MQ_NAME, O_CREAT | O_RDWR, 0666, NULL);
+    mq = mq_open(MQ_NAME, O_RDONLY);
     if (mq == (mqd_t) - 1) {
         perror("mq_open");
         exit(EXIT_FAILURE);
@@ -32,19 +32,10 @@ void comprobador(MemoriaCompartida *mem, int lag) {
     printf("[%d] Checking blocks...\n", getpid());
 
     while (1) {
-        struct mq_attr attr;
-        if (mq_getattr(mq, &attr) == -1) {
-            perror("mq_getattr");
-        } else {
-            printf("Estado de la cola: mensajes en cola = %ld\n", attr.mq_curmsgs);
-}
-
         if (mq_receive(mq, (char *)&b, sizeof(Bloque), NULL) == -1) {
             perror("mq_receive");
-            exit(EXIT_FAILURE);
+            return;
         }
-        printf("[%d] Bloque recibido: objetivo = %ld, solucion = %ld, es_valido = %d\n", getpid(), b.objetivo, b.solucion, b.es_valido);
-
 
         if (b.es_valido == -1) {
             printf("[%d] Finishing\n", getpid());
