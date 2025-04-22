@@ -19,6 +19,6 @@
  * @param mem Shared memory segment.
  * @param lag Miliseconds of lag.
  */
-void monitor(MemoriaCompartida *mem, int lag, int soy_creador);
+void monitor(MemoriaCompartida *mem, int lag);
 
 #endif

@@ -10,11 +10,10 @@
  */
 #include <stdio.h>
 #include <unistd.h>
-#include <sys/mman.h>
 #include "monitor.h"
 
 /*Implementation of the monitor process. */
-void monitor(MemoriaCompartida *mem, int lag, int soy_creador) {
+void monitor(MemoriaCompartida *mem, int lag) {
     Bloque b;
 
     printf("[%d] Printing blocks...\n", getpid());
@@ -40,12 +39,5 @@ void monitor(MemoriaCompartida *mem, int lag, int soy_creador) {
             printf("Solution rejected: %08ld !-> %08ld\n", b.objetivo, b.solucion);
 
         usleep(lag*1000);
-    }
-
-    if (soy_creador) {
-        sem_destroy(&mem->mutex);
-        sem_destroy(&mem->empty);
-        sem_destroy(&mem->fill);
-        shm_unlink(SHM_NAME);
     }
 }

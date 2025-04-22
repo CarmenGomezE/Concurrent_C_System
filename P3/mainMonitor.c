@@ -24,26 +24,14 @@
 
 MemoriaCompartida *mem = NULL;
 int creador = 0;
-int fd=-1;
 
 /*Function for resource cleaning. */
 void limpiar_recursos() {
-    if (mem) {
-        if (munmap(mem, MEM_SIZE) == -1) {
-            perror("munmap");
-        }
-    }
-
-    if (fd != -1) {
-        close(fd);
-    }
-
     if (mem && creador) {
         sem_destroy(&mem->mutex);
         sem_destroy(&mem->empty);
         sem_destroy(&mem->fill);
         shm_unlink(SHM_NAME);
-        printf("\n[INFO] Recursos liberados correctamente.\n");
     }
 }
 
@@ -56,7 +44,7 @@ void manejar_senial(int sig) {
 
 /*Main program that implements monitor and comprobador processes.*/
 int main(int argc, char *argv[]) {
-    int lag; 
+    int fd, lag; 
 
     if (argc != 2) {
         fprintf(stderr, "Uso: %s <LAG>\n", argv[0]);
@@ -75,22 +63,17 @@ int main(int argc, char *argv[]) {
             perror("shm_open");
             exit(EXIT_FAILURE);
         }
-        creador=0;
     } else {
         if (ftruncate(fd, MEM_SIZE) == -1) {
             perror("ftruncate");
             exit(EXIT_FAILURE);
         }
-        creador=1;
+        creador = 1;
     }
 
     mem = mmap(NULL, MEM_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
     if (mem == MAP_FAILED) {
         perror("mmap");
-        close(fd);
-        if (creador){
-            shm_unlink(SHM_NAME);
-        } 
         exit(EXIT_FAILURE);
     }
 
@@ -101,7 +84,7 @@ int main(int argc, char *argv[]) {
         mem->in = mem->out = 0;
         comprobador(mem, lag);
     } else {
-        monitor(mem, lag, creador);
+        monitor(mem, lag);
     }
 
     limpiar_recursos();
