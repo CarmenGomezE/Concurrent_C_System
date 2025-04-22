@@ -78,6 +78,9 @@ int main(int argc, char *argv[]) {
     for (i = 0; i < rounds; i++) {
         memset(&b, 0, sizeof(Bloque));
 
+        printf("[%d] Enviando bloque: objetivo = %ld, solucion = %ld, es_valido = %d\n", getpid(), b.objetivo, b.solucion, b.es_valido);
+
+
         if (fscanf(f, "%ld", &b.solucion) != 1) {
             perror("fscanf");
             break;
