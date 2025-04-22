@@ -23,7 +23,7 @@ void comprobador(MemoriaCompartida *mem, int lag) {
     mqd_t mq;
     Bloque b;
 
-    mq = mq_open(MQ_NAME, O_RDONLY);
+    mq = mq_open(MQ_NAME, O_CREAT | O_RDWR, 0666, NULL);
     if (mq == (mqd_t) - 1) {
         perror("mq_open");
         exit(EXIT_FAILURE);
@@ -34,7 +34,7 @@ void comprobador(MemoriaCompartida *mem, int lag) {
     while (1) {
         if (mq_receive(mq, (char *)&b, sizeof(Bloque), NULL) == -1) {
             perror("mq_receive");
-            return;
+            exit(EXIT_FAILURE);
         }
 
         if (b.es_valido == -1) {
