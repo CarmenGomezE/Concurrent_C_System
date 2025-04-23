@@ -74,8 +74,23 @@ int main (int argc, char *argv[]) {
             exit(EXIT_FAILURE);
         }
 
-        
+        //Falta tambien si el bloque es el de terminación
+
+        //Si el bloque b es válido
+        sem_wait(&mem->empty);
+        sem_wait(&mem->mutex);
+        mem->buffer[mem->in] = b;
+        mem->in = (mem->in + 1) % BUFFER_SIZE;
+        sem_post(&mem->mutex);
+        sem_post(&mem->fill);
     }
+
+    waitpid(monitor_pid, NULL, 0);
+
+    sem_destroy(&mem->mutex);
+    sem_destroy(&mem->empty);
+    sem_destroy(&mem->fill);
+    shm_unlink(SHM_NAME_MONITOR);
 
     mq_close(mq);
     mq_unlink(MQ_NAME);

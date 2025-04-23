@@ -20,6 +20,8 @@ typedef struct {
 } Bloque;
 
 typedef struct {  
+    int in;
+    int out;
     Bloque bloques[BUFFER_SIZE];
     sem_t sem_mutex;   
     sem_t sem_empty; 
