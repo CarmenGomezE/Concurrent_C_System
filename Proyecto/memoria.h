@@ -19,11 +19,7 @@ typedef struct {
     int bloque_listo;  
 } Bloque;
 
-typedef struct {
-    int num_miners; 
-    int ronda_actual;  
-    int max_miners;    
-    int ganador_pid;    
+typedef struct {  
     Bloque bloques[BUFFER_SIZE];
     sem_t sem_mutex;   
     sem_t sem_empty; 
