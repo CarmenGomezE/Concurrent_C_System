@@ -18,10 +18,10 @@
 #include <sys/wait.h>
 #include <mqueue.h>
 #include "pow.h"
-#include "memoria.h"
+#include "memoriaMonitor.h"
 #include "monitor.h"
 
-MonitorSharedMemory *mem = NULL;
+SharedMemory *mem = NULL;
  
 int main (int argc, char *argv[]) {
     int fd;
