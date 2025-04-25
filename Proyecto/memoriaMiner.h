@@ -7,10 +7,13 @@
 #define QUEUE_NAME "/mensages"
 
 typedef struct {
+    int id;
     long int target;
     long int solution;
     int valid;      
-    int votes[MAX_MINERS];     
+    int votes[MAX_MINERS]; 
+    int miner_coins[MAX_MINERS];
+    pid_t winner_pid;     
 } Bloque;
 
 typedef struct {
@@ -18,10 +21,8 @@ typedef struct {
     int miner_count;
     pid_t miner_pids[MAX_MINERS];
     long block_target;
-    pid_t winner_pid; 
     int vote_approved;
     int vote_count;
-    int miner_coins[MAX_MINERS];
     Bloque current_block;
 } SharedData;
 
