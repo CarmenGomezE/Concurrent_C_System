@@ -2,6 +2,9 @@
 #define MEMORIA_H
 
 #include <semaphore.h>
+#include "miner.h"
+
+#define QUEUE_NAME "/mensages"
 
 typedef struct {
     long int target;
@@ -11,14 +14,25 @@ typedef struct {
 } Bloque;
 
 typedef struct {
-    int num_miners; 
-    int ronda_actual;  
-    int max_miners;    
-    int ganador_pid;    
-    Bloque bloques[10];
-    sem_t sem_mutex;   
-    sem_t sem_votacion; 
-    sem_t sem_finalizado;
-} Sistema;
+    int initialized;
+    int miner_count;
+    pid_t miner_pids[MAX_MINERS];
+    long block_target;
+    pid_t winner_pid; 
+    int vote_approved;
+    int vote_count;
+    int miner_coins[MAX_MINERS];
+    Bloque current_block;
+} SharedData;
+
+typedef struct {
+    long mtype;
+    Bloque block;
+} BloqueMessage;
+
+typedef struct {
+    long msg_type;
+    char msg_text[100];
+} Message;
 
 #endif
