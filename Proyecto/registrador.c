@@ -6,10 +6,11 @@
 #include <fcntl.h>
 #include "monitor.h"
 #include "pow.h"
-#include "memoria.h"
+#include "memoriaMiner.h"
+#include "miner.h"
 
 void registrador(int *pipefd) {
-    BloqueMessage b;
+    Bloque b;
     FILE *file; 
     ssize_t bytesLeidos;
     pid_t ppid;
@@ -27,10 +28,10 @@ void registrador(int *pipefd) {
     }
 
     while ((bytesLeidos = read(pipefd[0], &b, sizeof(Bloque))) > 0) {
-        dprintf(fd, "Id: %d\nWinner: %s\nTarget: %d\nSolution: %d\nVotes: %d\n", b.block.id, b.block.winner_pid, 
-                                                                                 b.block.target, b.block.solution, b.block.votes);
+        dprintf(fd, "Id: %d\nWinner: %s\nTarget: %d\nSolution: %d\nVotes: %d\n", b.id, b.winner_pid, 
+                                                                                 b.target, b.solution, b.votes);
         for(i=0; i<MAX_MINERS; i++){
-            dprintf();
+            dprintf(fd, "%d ", b.miner_coins[i]);
         }
     } 
     close(pipefd[0]);

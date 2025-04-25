@@ -26,14 +26,4 @@ typedef struct {
     Bloque current_block;
 } SharedData;
 
-typedef struct {
-    long mtype;
-    Bloque block;
-} BloqueMessage;
-
-typedef struct {
-    long msg_type;
-    char msg_text[100];
-} Message;
-
 #endif

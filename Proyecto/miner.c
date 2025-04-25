@@ -21,7 +21,7 @@
 #include "miner.h"
 #include "monitor.h"
 #include "pow.h"
-#include "memoria.h"
+#include "memoriaMiner.h"
 
 /* ==== Definiciones globales ==== */
 
@@ -71,12 +71,11 @@ void *miner_thread(void *arg) {
 
 void ganador( int *pipefd) {
     int max_attempts = 100, i=0, attempts = 0;
-    BloqueMessage msg;
+    Bloque b;
 
     printf("[GANADOR] PID %d se proclama ganador.\n", getpid());
 
     sem_wait(sem_vote);
-    shared_data->winner_pid = getpid();
     shared_data->vote_count = 0;
     shared_data->vote_approved = 0;
 
@@ -103,11 +102,13 @@ void ganador( int *pipefd) {
 
     printf("Votos recibidos: %d/%d\n", shared_data->vote_count, shared_data->miner_count - 1);
 
+    b = shared_data->current_block; 
+
     if (shared_data->vote_approved >= (shared_data->miner_count - 1) / 2) {
         printf("Bloque aprobado. Se otorga recompensa.\n");
         for (i = 0; i < shared_data->miner_count; i++) {
             if (shared_data->miner_pids[i] == getpid()) {
-                shared_data->miner_coins[i]++;
+                b.miner_coins[i]++;
                 break;
             }
         }
@@ -115,15 +116,12 @@ void ganador( int *pipefd) {
         printf("Bloque rechazado.\n");
     }
 
-    msg.mtype = 1;
-    msg.block = shared_data->current_block; 
-
     /** AQUÍ ENVÍA EL BLOQUE AL MONITOR */
     
 
     /** AQUÍ ENVÍA EL BLOQUE AL REGISTRADOR */
     close(pipefd[0]);
-    if (write(pipefd[1], &msg, sizeof(msg)) == -1) {
+    if (write(pipefd[1], &b, sizeof(b)) == -1) {
         perror("write to pipe");
         exit(EXIT_FAILURE);
     }
@@ -141,7 +139,7 @@ void ganador( int *pipefd) {
 
 void perdedor(int *pipefd) {
     int voto = 0;
-    BloqueMessage msg;
+    Bloque b;
 
     printf("[PERDEDOR] PID %d esperando SIGUSR2 para votar...\n", getpid());
     while (!stop_requested) pause();
@@ -161,11 +159,10 @@ void perdedor(int *pipefd) {
 
     printf("PID %d ha votado %s\n", getpid(), voto ? "AFIRMATIVO" : "NEGATIVO");
 
-    msg.mtype = 1;
-    msg.block = shared_data->current_block; 
+    b = shared_data->current_block; 
 
     close(pipefd[0]);
-    if (write(pipefd[1], &msg, sizeof(msg)) == -1) {
+    if (write(pipefd[1], &b, sizeof(b)) == -1) {
         perror("write to pipe");
         exit(EXIT_FAILURE);
     }
@@ -265,7 +262,6 @@ void miner(int *pipefd, int seconds, int n_threads) {
         shared_data->initialized = 1;
         shared_data->miner_count = 0;
         shared_data->block_target = BLOCK_TARGET;
-        shared_data->winner_pid = -1; 
         shared_data->vote_count = 0;
         shared_data->vote_approved = 0;
         for(i=0; i<MAX_MINERS; i++){
@@ -323,7 +319,6 @@ void miner(int *pipefd, int seconds, int n_threads) {
     if (solution_flag) {
         if (sem_trywait(sem_winner) == 0) {
             is_winner = 1;
-            shared_data->winner_pid = getpid();
             shared_data->current_block.solution = solution;
             shared_data->current_block.target = target;
             shared_data->current_block.valid = 1;
