@@ -7,22 +7,15 @@
 #define SEM_VOTE_NAME "/sem_vote"
 #define MAX_MINERS 10
 #define BLOCK_TARGET 12345  
-#define POW_LIMIT 1000000  
 
-typedef struct {
-    int initialized;
-    int miner_count;
-    pid_t miner_pids[MAX_MINERS];
-    long block_target;
-    int winner_pid; 
-    int vote_approved;
-    int vote_count;
-    long block_solution;
-    int votes[MAX_MINERS];
-    long int miner_coins[MAX_MINERS];
-} SharedData;
-
-void miner(int seconds, int threads);
+void miner(int *pipefd, int seconds, int threads);
+void msg_send_termination();
+void miner_cleanup();
+void perdedor(int *pipefd);
+void ganador(int *pipefd);
+void *miner_thread(void *arg);
+void sigusr2_handler(int signo) ;
+void sigusr1_handler(int signo);
 
 #endif
 

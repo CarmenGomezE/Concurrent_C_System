@@ -1,30 +1,21 @@
-# Variables
+TARGETS = miner #monitor
+
+#SRCS_MONITOR = comprobador.c monitor.c
+SRCS_MINER = mainMiner.c miner.c comprobador.c monitor.c registrador.c pow.c
+
 CC = gcc
-CFLAGS = -Wall -Wextra -pthread -g
-LDFLAGS = -lrt
-OBJ = principal.o miner.o monitor.o registrador.o pow.o
-DEPS = miner.h monitor.h registrador.h pow.h
+CFLAGS = -Wall -Wextra
+LDFLAGS = -lrt -lpthread
 
-# Nombre del ejecutable
-TARGET = principal
+all: $(TARGETS)
 
-# Regla por defecto
-all: $(TARGET)
-
-# Enlace del ejecutable
-$(TARGET): $(OBJ)
+monitor: $(SRCS_MONITOR)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
-# Regla para compilar archivos .c en .o
-%.o: %.c $(DEPS)
-	$(CC) $(CFLAGS) -c $<
+miner: $(SRCS_MINER)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
-# Limpieza de archivos
 clean:
-	rm -f *.o $(TARGET)
+	rm -f $(TARGETS)
 
-# Limpieza total
-distclean: clean
-	rm -f *~ core
-
-.PHONY: all clean distclean
+.PHONY: all clean

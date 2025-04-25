@@ -18,19 +18,12 @@
 #include <sys/wait.h>
 #include "pow.h"
 #include "miner.h"
+#include "registrador.h"
 #include "monitor.h"
 
-void create_logger_process() {
-    pid_t pid = fork();
-    if (pid == 0) {
-        execl("./logger", "logger", NULL);
-        perror("Error ejecutando logger");
-        exit(EXIT_FAILURE);
-    }
-}
-
 int main(int argc, char *argv[]){
-    int sec, n_threads;
+    int sec, n_threads, status=0;
+    pid_t pid;
 
     if(argc!=3){
         perror("The arguments should be ./miner <N_SECONDS> <N_THREADS>");
@@ -45,8 +38,26 @@ int main(int argc, char *argv[]){
         exit(EXIT_FAILURE);
     }
 
-    create_logger_process();
-    start_miner(sec, n_threads);
+    /** Tubería para mandar al registrador */
+    int pipefd[2];  
+    if (pipe(pipefd) == -1) {
+        perror("pipe");
+        exit(EXIT_FAILURE);
+    }
+
+    pid = fork();
+    /** Código del registrador */
+    if (pid == 0) {
+        registrador(pipefd);
+        perror("Error en el registrador");
+        exit(EXIT_FAILURE);
+    }
+     /** Código del minero */
+    miner(pipefd, sec, n_threads);
+
+    waitpid(pid, &status, 0);
+    close(pipefd[1]);
+    close(pipefd[0]);
 
     exit(EXIT_SUCCESS);
 }
