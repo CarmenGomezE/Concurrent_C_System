@@ -1,6 +1,12 @@
 /**
- * @file miner.c
- * @brief Minero con sincronización por memoria compartida y minería real con hilos.
+ * @file minero.c
+ * @author María Pozo, Carmen Gómez.
+ * @brief Implementation of the miner process.
+ * @version 2.0
+ * @date 2025-02-24
+ *
+ * @copyright Copyright (c) 2022
+ *
  */
 
 #include <pthread.h>
@@ -17,6 +23,7 @@
 #include <sys/wait.h>
 #include <sys/shm.h>
 #include <errno.h>
+#include <mqueue.h>
 
 #include "miner.h"
 #include "monitor.h"
@@ -72,6 +79,7 @@ void *miner_thread(void *arg) {
 void ganador( int *pipefd) {
     int max_attempts = 100, i=0, attempts = 0;
     Bloque b;
+    mqd_t mq;
 
     printf("[GANADOR] PID %d se proclama ganador.\n", getpid());
 
@@ -117,7 +125,14 @@ void ganador( int *pipefd) {
     }
 
     /** AQUÍ ENVÍA EL BLOQUE AL MONITOR */
-    
+
+    mq = mq_open(MQ_NAME, O_WRONLY , 0666, NULL);
+    if (mq == (mqd_t) - 1) {
+        perror("mq_open");
+        exit(EXIT_FAILURE);
+    }
+    mq_send(mq, (char *)&b, sizeof(Bloque), 0);
+    mq_close(mq);
 
     /** AQUÍ ENVÍA EL BLOQUE AL REGISTRADOR */
     close(pipefd[0]);
@@ -176,7 +191,17 @@ void perdedor(int *pipefd) {
 }
 
 void msg_send_termination() {
+    Bloque b;
+    mqd_t mq;
     /** AQUÍ ENVÍA EL MENSAGE DE FINALIZACIÓN */
+    mq = mq_open(MQ_NAME, O_WRONLY , 0666, NULL);
+    if (mq == (mqd_t) - 1) {
+        perror("mq_open");
+        exit(EXIT_FAILURE);
+    }
+    b.type=-1;
+    mq_send(mq, (char *)&b, sizeof(Bloque), 0);
+    mq_close(mq);
 
     printf("Mensaje de finalización enviado al monitor.\n");
 }
@@ -266,6 +291,7 @@ void miner(int *pipefd, int seconds, int n_threads) {
         shared_data->vote_approved = 0;
         for(i=0; i<MAX_MINERS; i++){
             shared_data->miner_pids[i]=0;
+            shared_data->miner_coins[i]=0;
         }
         printf("Primer minero ha inicializado el sistema.\n");
     } 
@@ -319,9 +345,16 @@ void miner(int *pipefd, int seconds, int n_threads) {
     if (solution_flag) {
         if (sem_trywait(sem_winner) == 0) {
             is_winner = 1;
+            for(i=0; i<MAX_MINERS;i++){
+                shared_data->current_block.miner_coins[i]=0;
+                shared_data->current_block.votes[i]=0;
+            }
+            shared_data->current_block.id=shared_data->miner_count;
+            shared_data->current_block.winner_pid=getpid();
             shared_data->current_block.solution = solution;
             shared_data->current_block.target = target;
             shared_data->current_block.valid = 1;
+            shared_data->current_block.type=0;
             printf("[GANADOR] Minero PID %d proclama solución: %ld\n", getpid(), solution);
 
             for (i = 0; i < shared_data->miner_count; i++) {

@@ -2,7 +2,7 @@
 #define MINER_H
 
 #define SHM_NAME "/mining_shm"
-#define SEM_INIT_NAME "/sem_init"
+#define SEM_INIT_NAME "/sem_initial"
 #define SEM_WINNER_NAME "/sem_winner"
 #define SEM_VOTE_NAME "/sem_vote"
 #define MAX_MINERS 10

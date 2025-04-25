@@ -11,14 +11,13 @@
 
 void registrador(int *pipefd) {
     Bloque b;
-    FILE *file; 
     ssize_t bytesLeidos;
     pid_t ppid;
     char filename[64];
     int fd, i;
 
     close(pipefd[1]);
-    pid_t ppid = getppid();
+    ppid = getppid();
     snprintf(filename, sizeof(filename), "registro_%d.txt", ppid);
 
     fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC, 0644);
@@ -28,11 +27,19 @@ void registrador(int *pipefd) {
     }
 
     while ((bytesLeidos = read(pipefd[0], &b, sizeof(Bloque))) > 0) {
-        dprintf(fd, "Id: %d\nWinner: %s\nTarget: %d\nSolution: %d\nVotes: %d\n", b.id, b.winner_pid, 
-                                                                                 b.target, b.solution, b.votes);
-        for(i=0; i<MAX_MINERS; i++){
-            dprintf(fd, "%d ", b.miner_coins[i]);
+        dprintf(fd, "d : %04d\n", b.id);
+        dprintf(fd, "Winner : %d\n", b.winner_pid);
+        dprintf(fd, "Target : %ld\n", b.target);
+        dprintf(fd, "Solution : %ld ( validated )\n", b.solution);
+        dprintf(fd, "Votes : %ls/%d\n", b.votes, MAX_MINERS);
+
+        dprintf(fd, "Wallets : ");
+        for (i = 0; i < MAX_MINERS; i++) {
+            if (b.miner_coins[i] > 0) {
+                dprintf(fd, "%d:%02ld ", i, b.miner_coins[i]);
+            }
         }
+        dprintf(fd, "\n\n");
     } 
     close(pipefd[0]);
     printf("Registrador ha finalizado");
