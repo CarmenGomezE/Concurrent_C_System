@@ -38,7 +38,7 @@ void registrador(int *pipefd) {
         dprintf(fd, "Votes : %d/%d\n", b.favor_votes, b.total_votes);
 
         dprintf(fd, "Wallets : ");
-        for (i = 0; i < MAX_WALLETS; i++) {            
+        for (i = 0; i < b.num_wallets; i++) {            
             dprintf(fd, "%d:%02d ", b.wallets[i].pid, b.wallets[i].coins);
         }
         dprintf(fd, "\n\n");
