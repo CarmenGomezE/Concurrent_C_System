@@ -39,6 +39,7 @@ static sem_t *sem_vote;
 static volatile sig_atomic_t start_mining = 0;
 static volatile sig_atomic_t stop_requested = 0;
 static volatile sig_atomic_t is_winner = 0;
+volatile sig_atomic_t tiempo_terminado=0;
 
 /* ==== Estructura para los hilos ==== */
 typedef struct minerParams {
@@ -61,6 +62,11 @@ void sigusr2_handler(int signo) {
     stop_requested = 1;
 }
 
+void alarm_handler(int signo) {
+    (void)signo;
+    tiempo_terminado = 1;
+}
+
 void *miner_thread(void *arg) {
     MinerParams *params = (MinerParams*)arg;
 
@@ -76,23 +82,30 @@ void *miner_thread(void *arg) {
     return NULL;
 }
 
-void ganador( int *pipefd) {
+void ganador( int *pipefd, int long solution,int long target) {
     int max_attempts = 100, i=0, attempts = 0;
-    Bloque b;
+    Block b;
     mqd_t mq;
 
     printf("[GANADOR] PID %d se proclama ganador.\n", getpid());
 
     sem_wait(sem_vote);
-    shared_data->vote_count = 0;
-    shared_data->vote_approved = 0;
-
-    for (i = 0; i < shared_data->miner_count; i++) {
-        shared_data->current_block.votes[i] = 0;
+     for(i=0; i<MAX_MINERS; i++){
+        shared_data->votes[i]=0;
     }
-
-    shared_data->current_block.solution = shared_data->block_target;
-    shared_data->current_block.valid = 1;
+    for(i=0; i<MAX_WALLETS; i++){
+        shared_data->wallets[i].coins=0;
+        shared_data->wallets[i].pid=0;
+    }
+    shared_data->current_block.id_block++;
+    shared_data->current_block.winner_pid=getpid();
+    shared_data->current_block.solution = solution;
+    shared_data->current_block.target = target;
+    shared_data->current_block.validated = 0;
+    shared_data->current_block.type=0;
+    shared_data->current_block.favor_votes=0;
+    shared_data->current_block.total_votes=0;
+    printf("[GANADOR] Minero PID %d proclama solución: %ld\n", getpid(), solution);
     sem_post(sem_vote);
 
     for (i = 0; i < shared_data->miner_count; i++) {
@@ -154,7 +167,7 @@ void ganador( int *pipefd) {
 
 void perdedor(int *pipefd) {
     int voto = 0;
-    Bloque b;
+    Block b;
 
     printf("[PERDEDOR] PID %d esperando SIGUSR2 para votar...\n", getpid());
     while (!stop_requested) pause();
@@ -191,7 +204,7 @@ void perdedor(int *pipefd) {
 }
 
 void msg_send_termination() {
-    Bloque b;
+    Block b;
     mqd_t mq;
     /** AQUÍ ENVÍA EL MENSAGE DE FINALIZACIÓN */
     mq = mq_open(MQ_NAME, O_WRONLY , 0666, NULL);
@@ -200,7 +213,7 @@ void msg_send_termination() {
         exit(EXIT_FAILURE);
     }
     b.type=-1;
-    mq_send(mq, (char *)&b, sizeof(Bloque), 0);
+    mq_send(mq, (char *)&b, sizeof(Block), 0);
     mq_close(mq);
 
     printf("Mensaje de finalización enviado al monitor.\n");
@@ -211,10 +224,10 @@ void miner_cleanup() {
         for (int i = 0; i < shared_data->miner_count; i++) {
             if (shared_data->miner_pids[i] == getpid()) {
                 shared_data->miner_pids[i] = 0; 
-                shared_data->miner_count--;
                 break;
             }
         }
+        shared_data->miner_count--;
 
         if (shared_data->miner_count == 0) {
             munmap(shared_data, sizeof(SharedData));
@@ -235,7 +248,7 @@ void miner_cleanup() {
 /* ==== Lógica principal del minero ==== */
 void miner(int *pipefd, int seconds, int n_threads) {
     int first_miner, i;
-    long int target = shared_data->block_target;
+    long int target = shared_data->current_block.target;
     long int solution = 0;
     int shm_fd;
     int solution_flag = 0;
@@ -246,6 +259,7 @@ void miner(int *pipefd, int seconds, int n_threads) {
 
     signal(SIGUSR1, sigusr1_handler);
     signal(SIGUSR2, sigusr2_handler);
+    signal(SIGALRM, alarm_handler);
 
     /* Abrir o crear memoria compartida */
     shm_fd = shm_open(SHM_NAME, O_RDWR | O_CREAT, 0666);
@@ -281,18 +295,17 @@ void miner(int *pipefd, int seconds, int n_threads) {
         exit(EXIT_FAILURE);
     }
 
+    alarm(seconds);
     sem_wait(sem_initial);
     /** Si es el primer minero inicializa */
     if (first_miner && !shared_data->initialized) {
         shared_data->initialized = 1;
         shared_data->miner_count = 0;
-        shared_data->block_target = BLOCK_TARGET;
-        shared_data->vote_count = 0;
-        shared_data->vote_approved = 0;
+        shared_data->num_wallets=0;
         for(i=0; i<MAX_MINERS; i++){
             shared_data->miner_pids[i]=0;
-            shared_data->miner_coins[i]=0;
         }
+        
         printf("Primer minero ha inicializado el sistema.\n");
     } 
     /** Si no es el primer minero espera a que se inicialice */
@@ -308,7 +321,11 @@ void miner(int *pipefd, int seconds, int n_threads) {
         exit(EXIT_FAILURE);
     }
 
-    shared_data->miner_pids[shared_data->miner_count++] = getpid();
+    shared_data->miner_pids[shared_data->miner_count] = getpid();
+    shared_data->wallets[shared_data->num_wallets].coins=0;
+    shared_data->wallets[shared_data->num_wallets].pid=getpid();
+    shared_data->miner_count++;
+    shared_data->num_wallets++;
     printf("Minero registrado: PID %d\n", getpid());
 
     /** Si es el primero, arranca la ronda */
@@ -321,58 +338,41 @@ void miner(int *pipefd, int seconds, int n_threads) {
     sem_post(sem_initial);
 
     /* Esperar a que empiece la ronda */
-    while (!start_mining) pause();
+    while(!tiempo_terminado){
+        while (!start_mining && !tiempo_terminado) pause();
+        if(tiempo_terminado) break;
 
-    printf("Minero PID %d comenzando a minar con %d hilos durante %d segundos...\n", getpid(), n_threads, seconds);
+        start_mining=0;
 
-    for (int i = 0; i < n_threads; i++) {
-        params[i].start = i * range;
-        params[i].end = (i + 1) * range;
-        params[i].target = target;
-        params[i].solution = &solution;
-        params[i].solution_flag = &solution_flag;
+        printf("Minero PID %d comenzando a minar con %d hilos durante %d segundos...\n", getpid(), n_threads, seconds);
 
-        if (pthread_create(&threads[i], NULL, miner_thread, &params[i])) {
-            perror("pthread_create");
-            exit(EXIT_FAILURE);
+        for (int i = 0; i < n_threads; i++) {
+            params[i].start = i * range;
+            params[i].end = (i + 1) * range;
+            params[i].target = target;
+            params[i].solution = &solution;
+            params[i].solution_flag = &solution_flag;
+
+            if (pthread_create(&threads[i], NULL, miner_thread, &params[i])) {
+                perror("pthread_create");
+                exit(EXIT_FAILURE);
+            }
         }
-    }
 
-    for (i = 0; i < n_threads; i++) {
-        pthread_join(threads[i], NULL);
-    }
+        for (i = 0; i < n_threads; i++) {
+            pthread_join(threads[i], NULL);
+        }
 
-    if (solution_flag) {
-        if (sem_trywait(sem_winner) == 0) {
-            is_winner = 1;
-            for(i=0; i<MAX_MINERS;i++){
-                shared_data->current_block.miner_coins[i]=0;
-                shared_data->current_block.votes[i]=0;
-            }
-            shared_data->current_block.id=shared_data->miner_count;
-            shared_data->current_block.winner_pid=getpid();
-            shared_data->current_block.solution = solution;
-            shared_data->current_block.target = target;
-            shared_data->current_block.valid = 1;
-            shared_data->current_block.type=0;
-            printf("[GANADOR] Minero PID %d proclama solución: %ld\n", getpid(), solution);
-
-            for (i = 0; i < shared_data->miner_count; i++) {
-                if (shared_data->miner_pids[i] != getpid()) {
-                    kill(shared_data->miner_pids[i], SIGUSR2);
-                }
-            }
+        if (solution_flag) {
+            if (sem_trywait(sem_winner) == 0)
+                is_winner = 1;
+        } 
+        if (is_winner) {
+            ganador( pipefd, solution, target);  
         } else {
-            printf("[PERDEDOR] Otro proceso ya proclamó solución. PID %d espera votación.\n", getpid());
+            perdedor(pipefd); 
         }
-    } else {
-        printf("[PERDEDOR] No encontró solución. PID %d espera votación.\n", getpid());
-    }
-
-    if (is_winner) {
-        ganador( pipefd);  
-    } else {
-        perdedor(pipefd); 
+        sleep(1);
     }
 
     miner_cleanup();

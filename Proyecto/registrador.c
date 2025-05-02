@@ -10,7 +10,7 @@
 #include "miner.h"
 
 void registrador(int *pipefd) {
-    Bloque b;
+    Block b;
     ssize_t bytesLeidos;
     pid_t ppid;
     char filename[64];
@@ -26,18 +26,20 @@ void registrador(int *pipefd) {
         exit(EXIT_FAILURE);
     }
 
-    while ((bytesLeidos = read(pipefd[0], &b, sizeof(Bloque))) > 0) {
-        dprintf(fd, "d : %04d\n", b.id);
+    while ((bytesLeidos = read(pipefd[0], &b, sizeof(Block))) > 0) {
+        dprintf(fd, "d : %04d\n", b.id_block);
         dprintf(fd, "Winner : %d\n", b.winner_pid);
         dprintf(fd, "Target : %ld\n", b.target);
-        dprintf(fd, "Solution : %ld ( validated )\n", b.solution);
-        dprintf(fd, "Votes : %ls/%d\n", b.votes, MAX_MINERS);
+        if(b.validated==1){
+            dprintf(fd, "Solution : %ld (validated)\n", b.solution);
+        } else{
+        dprintf(fd, "Solution : %ld (rejected)\n", b.solution);
+        }
+        dprintf(fd, "Votes : %ls/%d\n", b.favor_votes, b.total_votes);
 
         dprintf(fd, "Wallets : ");
-        for (i = 0; i < MAX_MINERS; i++) {
-            if (b.miner_coins[i] > 0) {
-                dprintf(fd, "%d:%02ld ", i, b.miner_coins[i]);
-            }
+        for (i = 0; i < MAX_WALLETS; i++) {            
+            dprintf(fd, "%d:%02ld ", b.wallets[i].pid, b.wallets[i].coins);
         }
         dprintf(fd, "\n\n");
     } 
