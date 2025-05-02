@@ -26,6 +26,8 @@ typedef struct {
     int validated;      
     int favor_votes;
     int total_votes;
+    Wallet wallets[MAX_WALLETS];
+    int num_wallets;
     pid_t winner_pid;     
 } Block;
 

@@ -35,11 +35,11 @@ void registrador(int *pipefd) {
         } else{
         dprintf(fd, "Solution : %ld (rejected)\n", b.solution);
         }
-        dprintf(fd, "Votes : %ls/%d\n", b.favor_votes, b.total_votes);
+        dprintf(fd, "Votes : %d/%d\n", b.favor_votes, b.total_votes);
 
         dprintf(fd, "Wallets : ");
         for (i = 0; i < MAX_WALLETS; i++) {            
-            dprintf(fd, "%d:%02ld ", b.wallets[i].pid, b.wallets[i].coins);
+            dprintf(fd, "%d:%02d ", b.wallets[i].pid, b.wallets[i].coins);
         }
         dprintf(fd, "\n\n");
     } 
