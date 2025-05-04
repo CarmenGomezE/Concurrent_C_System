@@ -51,7 +51,7 @@ int main(int argc, char *argv[]){
         registrador(pipefd);
         perror("Error en el registrador");
         exit(EXIT_FAILURE);
-    } else{
+    } else if (pid>0){
             /** Código del minero */
         miner(pipefd, sec, n_threads);
 
@@ -59,7 +59,8 @@ int main(int argc, char *argv[]){
         if(!WIFEXITED(status) || WEXITSTATUS(status)!= EXIT_SUCCESS){
             printf("Aviso: el Registrador no terminó correctamente\n");
         }
-        miner_cleanup();
+    } else{
+        perror("fork");
     }
 
     close(pipefd[1]);
