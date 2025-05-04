@@ -287,13 +287,13 @@ void miner(int *pipefd, int seconds, int n_threads) {
     }
 
     if (created) {
-        if (ftruncate(shm_fd, MEM_SIZE) == -1) {
+        if (ftruncate(shm_fd, MEM_MINER_SIZE) == -1) {
             perror("ftruncate");
             exit(EXIT_FAILURE);
         }
     }
 
-    shared_data = mmap(NULL, MEM_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0);
+    shared_data = mmap(NULL, MEM_MINER_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0);
     if (shared_data == MAP_FAILED) {
         perror("mmap");
         exit(EXIT_FAILURE);

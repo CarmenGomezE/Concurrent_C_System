@@ -14,7 +14,7 @@
 #define SEM_VOTE_NAME "/sem_vote"
 #define MAX_MINERS 100
 #define BLOCK_TARGET 12345 
-#define MEM_SIZE sizeof(SharedData)
+#define MEM_MINER_SIZE sizeof(SharedData)
 
 typedef struct{
     pid_t pid;
