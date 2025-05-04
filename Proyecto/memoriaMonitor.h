@@ -1,7 +1,7 @@
 /**
  * @file memoriaMonitor.h
  * @author María Pozo, Carmen Gómez.
- * @brief Implementation of the monitor and comprobador programs.
+ * @brief Implementation of the Monitor and Comprobador programs.
  * @version 2.0
  * @date 2025-02-24
  *
@@ -14,11 +14,11 @@
 #include <semaphore.h>
 #include "memoriaMiner.h"
 
-#define BUFFER_SIZE 5 /*!< Buffer size. */
-#define MONITOR_SHM_NAME "/monitor_shared_memory" /*!< Shared memory name. */
-#define MEM_SIZE sizeof(SharedMemory) /*!< Shared memory size. */
+#define BUFFER_SIZE 5                               /*!< Buffer size. */
+#define SHM_NAME_MONITOR "/monitor_shared_memory"   /*!< Shared memory name. */
+#define MEM_SIZE sizeof(SharedMemory)               /*!< Shared memory size. */
 
-/** MemoriaCompartida structure that stores the information of the shared memory segment.*/
+/** SharedMemory structure that stores the information of the shared memory segment.*/
 typedef struct {
     sem_t mutex;
     sem_t empty;

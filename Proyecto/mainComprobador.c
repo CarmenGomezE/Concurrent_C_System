@@ -17,6 +17,8 @@
 #include <string.h>
 #include <sys/wait.h>
 #include <mqueue.h>
+#include <sys/mman.h>
+#include <errno.h>
 #include "pow.h"
 #include "memoriaMonitor.h"
 #include "monitor.h"
@@ -28,7 +30,7 @@ mqd_t mq;
  * @brief Sends the ending block
  * @param b The ending block
  */
-void send_ending_block(Bloque b) {
+void send_ending_block(Block b) {
     sem_wait(&mem->empty);
     sem_wait(&mem->mutex);
 
@@ -37,6 +39,24 @@ void send_ending_block(Bloque b) {
 
     sem_post(&mem->mutex);
     sem_post(&mem->fill);
+}
+
+/**
+ * @brief Cleans resources
+ */
+void clean_resources() {
+    if (mq != (mqd_t)-1) {
+        mq_close(mq);
+        mq_unlink(MQ_NAME);
+    }
+
+    if (mem != NULL) {
+        sem_destroy(&mem->mutex);
+        sem_destroy(&mem->empty);
+        sem_destroy(&mem->fill);
+        munmap(mem, MEM_SIZE);
+        shm_unlink(SHM_NAME_MONITOR);
+    }
 }
 
 /**
@@ -76,37 +96,13 @@ int check(Block b) {
     
     return is_pow_valid && is_structure_valid && is_miner_registered;
 }
-
-/**
- * @brief Cleans resources
- */
-void clean_resources() {
-    if (mq != (mqd_t)-1) {
-        mq_close(mq);
-        mq_unlink(MQ_NAME);
-    }
-
-    if (mem != NULL) {
-        sem_destroy(&mem->mutex);
-        sem_destroy(&mem->empty);
-        sem_destroy(&mem->fill);
-        munmap(mem, MEM_SIZE);
-        shm_unlink(SHM_NAME_MONITOR);
-    }
-}
  
-int main (int argc, char *argv[]) {
+int main (void) {
     int fd;
     pid_t monitor_pid;
-    struct mq_atrr attributes;
+    struct mq_attr attributes;
     Block b;
     int status;
-
-    /* Cehck the arguments */
-    if (argc != 1) {
-        perror("There should be no arguments");
-        exit(EXIT_FAILURE);
-    }
 
     /* Handle signal SIGINT */
     if (signal(SIGINT, handle_sigint) == SIG_ERR) {
@@ -114,21 +110,21 @@ int main (int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
  
-    /* Crear e inicializar un segmento de memoria compartida de monitoreo */
+    /* Create and initialize the shared memory segment of monitoring */
     fd = shm_open(SHM_NAME_MONITOR, O_CREAT | O_RDWR, 0666);
     if (fd == -1) {
         perror("shm_open");
         exit(EXIT_FAILURE);
     }
 
-    /* Dar tamaño al segmento */
+    /* Size the segment */
     if (ftruncate(fd, MEM_SIZE) == -1) {
         perror("ftruncate");
-        close(fd)
+        close(fd);
         exit(EXIT_FAILURE);
     }
 
-    /* Enlazar el segmento */
+    /* Link the segment */
     mem = mmap(NULL, MEM_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
     if (mem == MAP_FAILED) {
         perror("mmap");
@@ -138,23 +134,23 @@ int main (int argc, char *argv[]) {
 
     close(fd);
     
-    /* Inicializar los semáforos del segmento */
+    /* Initialize segment semaphores */
     sem_init(&mem->mutex, 1, 1);
     sem_init(&mem->empty, 1, BUFFER_SIZE);
     sem_init(&mem->fill, 1, 0);
 
-    /* Crear el proceso Monitor */
+    /* Create the process Monitor */
     monitor_pid = fork();
     if (monitor_pid == 0) {
         monitor(mem);
         exit(EXIT_SUCCESS);
-    } else if (mointor_pid == -1) {
+    } else if (monitor_pid == -1) {
         perror("fork");
         clean_resources();
         exit(EXIT_FAILURE);
     }
 
-    /* Crear la cola de mensajes para comunicarse con el proceso Ganador e inicialziarla */
+    /* Create the message queue to communicate with the process Ganador and initialize it */
     attributes.mq_flags = 0;
     attributes.mq_maxmsg = MQ_MAX_MSSGS;
     attributes.mq_msgsize = MQ_MAX_MSSG_SIZE;
@@ -164,12 +160,12 @@ int main (int argc, char *argv[]) {
     if (mq == (mqd_t) - 1) {
         perror("mq_open");
         kill(monitor_pid, SIGTERM);
-        clean_resourceS();
+        clean_resources();
         exit(EXIT_FAILURE);
     }
 
     while (1) {
-        /* Recibir un bloque a través de la cola de mensajes */
+        /* Receive a block through the message queue */
         if (mq_receive(mq, (char *)&b, sizeof(Block), NULL) == -1) {
             if (errno == EINTR) {
                 continue;
@@ -178,16 +174,16 @@ int main (int argc, char *argv[]) {
             break;
         }
 
-        /* Comprobar que el bloque sea de finalización */
+        /* Check if it is an ending block */
         if (b.validated == -1) {
             send_ending_block(b);
             break;
         }
 
-        /* Comprobar que el bloque sea correcto y ajustar la bandera */
+        /* Check if the block is correct and set the flag */
         b.validated = check(b);
 
-        /* Introducir el bloque en la memoria compartida */
+        /* Insert the block into shared memory */
         sem_wait(&mem->empty);
         sem_wait(&mem->mutex);
         mem->buffer[mem->in] = b;
@@ -196,12 +192,14 @@ int main (int argc, char *argv[]) {
         sem_post(&mem->fill);
     }
 
+    /* Wait for the process Monitor to end */
     if (waitpid(monitor_pid, &status, 0) == -1) {
         perror("waitpid");
     } else if (!WIFEXITED(status)) {
-        fprintf("Process Monitor didn't end correctly\n");
+        printf("Process Monitor didn't end correctly\n");
     }
 
+    /* Clean resources */
     clean_resources();
  
     return 0;

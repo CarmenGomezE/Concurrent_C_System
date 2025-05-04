@@ -1,7 +1,7 @@
-TARGETS = miner #monitor
+TARGETS = miner monitor
 
-#SRCS_MONITOR = comprobador.c monitor.c
-SRCS_MINER = mainMiner.c miner.c comprobador.c monitor.c registrador.c pow.c
+SRCS_MONITOR = mainComprobador.c monitor.c pow.c
+SRCS_MINER = mainMiner.c miner.c pow.c registrador.c
 
 CC = gcc
 CFLAGS = -Wall -Wextra

@@ -1,16 +1,51 @@
+/**
+ * @file monitor.c
+ * @author  María Pozo, Carmen Gómez.
+ * @brief Implementation of the Monitor process.
+ * @version 2.0
+ * @date 2025-02-24
+ *
+ * @copyright Copyright (c) 2022
+ *
+*/
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <string.h>
-#include <signal.h>
 #include "monitor.h"
 #include "memoriaMonitor.h"
-#include "pow.h"
 
-void monitor() {
+/**
+ * @brief Prints a block
+ * @param b The block that is being printed
+ */
+void print_block(Block b) {
+    int i;
+
+    printf("Id: %04d\n", b.id_block);
+    printf("Winner: %d\n", b.winner_pid);
+    printf("Target: %ld\n", b.target);
+
+    if (b.validated == 0) {
+        printf("Solution: %08ld (rejected)\n", b.solution);
+    } else {
+        printf("Solution %08ld (validated)\n", b.solution);
+    }
+
+    printf("Votes: %d/%d\n", b.favor_votes, b.total_votes);
+
+    printf("Wallets: ");
+    for (i = 0; i < b.num_wallets; i++) {
+        printf("%d: %02d ", b.wallets[i].pid, b.wallets[i].coins);
+    }
+
+    printf("\n");
+}
+
+/**
+ * @brief Process Monitor
+ */
+void monitor(SharedMemory *mem) {
     Block b;
-
-    printf("[%d] Printing blocks...\n", getpid());
 
     while (1) {
         sem_wait(&mem->fill);
@@ -23,13 +58,11 @@ void monitor() {
         sem_post(&mem->empty);
 
         if (b.validated == -1) {
-            printf("[%d] Finishing\n", getpid());
             break;
         }
 
-        if (b.validated)
-            printf("Solution accepted: %08ld --> %08ld\n", b.objetivo, b.solucion);
-        else
-            printf("Solution rejected: %08ld !-> %08ld\n", b.objetivo, b.solucion);
+        print_block(b);
     }
+
+    exit(EXIT_SUCCESS);
 }
