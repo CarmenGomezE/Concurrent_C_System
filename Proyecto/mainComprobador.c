@@ -22,6 +22,24 @@
 #include "monitor.h"
 
 SharedMemory *mem = NULL;
+
+void enviar_bloque_finalizacion (Bloque b) {
+    sem_wait(&mem->empty);
+    sem_wait(&mem->mutex);
+
+    mem->buffer[mem->in] = b;
+    mem->in = (mem->in + 1) % BUFFER_SIZE;
+
+    sem_post(&mem->mutex);
+    sem_post(&mem->fill);
+}
+
+void handle_sigint (int sig) {
+    (void)sig;
+    enviar_bloque_finalizacion(b);
+    limpiar_recursos();
+    exit(0);
+}
  
 int main (int argc, char *argv[]) {
     int fd;
@@ -34,6 +52,8 @@ int main (int argc, char *argv[]) {
         perror("There should be no arguments");
         exit(EXIT_FAILURE);
     }
+
+    signal(SIGINT, handle_sigint);
  
     fd = shm_open(SHM_NAME_MONITOR, O_CREAT | O_RDWR, 0666);
     if (fd == -1) {
@@ -75,6 +95,10 @@ int main (int argc, char *argv[]) {
         }
 
         //Falta tambien si el bloque es el de terminación
+        if (b.valid == -1) {
+            enviar_bloque_finalizacion(b);
+            break;
+        }
 
         //Si el bloque b es válido
         sem_wait(&mem->empty);
@@ -87,14 +111,8 @@ int main (int argc, char *argv[]) {
 
     waitpid(monitor_pid, NULL, 0);
 
-    sem_destroy(&mem->mutex);
-    sem_destroy(&mem->empty);
-    sem_destroy(&mem->fill);
-    shm_unlink(SHM_NAME_MONITOR);
-
-    mq_close(mq);
-    mq_unlink(MQ_NAME);
+    limpiar_recursos();
  
-    exit(EXIT_SUCCESS);
+    return 0;
 }
  
