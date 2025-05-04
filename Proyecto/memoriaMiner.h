@@ -12,8 +12,9 @@
 #define SEM_INIT_NAME "/sem_initial"
 #define SEM_WINNER_NAME "/sem_winner"
 #define SEM_VOTE_NAME "/sem_vote"
-#define MAX_MINERS 10
+#define MAX_MINERS 100
 #define BLOCK_TARGET 12345 
+#define MEM_SIZE sizeof(SharedData)
 
 typedef struct{
     pid_t pid;
@@ -41,7 +42,12 @@ typedef struct {
     pid_t miner_pids[MAX_MINERS];
     Wallet wallets[MAX_WALLETS];
     Block last_block;
-    Block current_block;
+    Block current_block;            
+    int start_mining;              
+    int start_voting;               
+    int tiempo_terminado;         
+    int is_winner;               
+    int finish;                
 } SharedData;
 
 #endif
