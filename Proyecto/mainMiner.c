@@ -51,11 +51,17 @@ int main(int argc, char *argv[]){
         registrador(pipefd);
         perror("Error en el registrador");
         exit(EXIT_FAILURE);
-    }
-     /** Código del minero */
-    miner(pipefd, sec, n_threads);
+    } else{
+            /** Código del minero */
+        miner(pipefd, sec, n_threads);
 
-    waitpid(pid, &status, 0);
+        waitpid(pid, &status, 0);
+        if(!WIFEXITED(status) || WEXITSTATUS(status)!= EXIT_SUCCESS){
+            printf("Aviso: el Registrador no terminó correctamente\n");
+        }
+        miner_cleanup();
+    }
+
     close(pipefd[1]);
     close(pipefd[0]);
 
