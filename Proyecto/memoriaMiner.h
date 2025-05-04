@@ -5,6 +5,8 @@
 #include "miner.h"
 
 #define MQ_NAME "/mensages"
+#define MQ_MAX_MSSGS 10
+#define MQ_MAX_MSSG_SIZE sizeof(Block)
 #define MAX_WALLETS 100
 #define SHM_NAME "/mining_shm"
 #define SEM_INIT_NAME "/sem_initial"

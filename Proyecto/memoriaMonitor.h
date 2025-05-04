@@ -23,7 +23,7 @@ typedef struct {
     sem_t mutex;
     sem_t empty;
     sem_t fill;
-    Bloque buffer[BUFFER_SIZE];
+    Block buffer[BUFFER_SIZE];
     int in;
     int out;
 } SharedMemory;
