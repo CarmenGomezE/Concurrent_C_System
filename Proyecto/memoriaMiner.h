@@ -44,10 +44,8 @@ typedef struct {
     Block last_block;
     Block current_block;            
     int start_mining;              
-    int start_voting;               
-    int tiempo_terminado;         
-    int is_winner;               
-    int finish;                
+    int start_voting;                      
+    int is_winner;                            
 } SharedData;
 
 #endif

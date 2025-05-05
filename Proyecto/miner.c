@@ -62,13 +62,15 @@ void sigusr2_handler(int signo) {
 void alarm_handler(int signo) { 
     (void)signo; 
     printf("[DEBUG] A recibido\n"); 
-    shared_data->tiempo_terminado = 1; 
+    miner_cleanup();
+    exit(EXIT_SUCCESS);
 }
 
 void sigint_handler(int signo) { 
     (void)signo; 
-    printf("[DEBUG] C recibido\n"); 
-    shared_data->finish = 1;
+    printf("[DEBUG] C recibido\n");
+    miner_cleanup();
+    exit(EXIT_SUCCESS); 
 }
 
 void *miner_thread(void *arg) {
@@ -176,16 +178,15 @@ void perdedor(int *pipefd) {
         vote = 1;
     }
 
-    sem_wait(sem_vote);
-    shared_data->current_block.total_votes++;
-    if (vote) shared_data->current_block.favor_votes++;
+    sem_wait(sem_vote);  
+    shared_data->current_block.total_votes++;  
+    if (vote) shared_data->current_block.favor_votes++;  
     for (int i = 0; i < MAX_MINERS; i++) {
         if (shared_data->miner_pids[i] == getpid()) {
-            shared_data->votes[i] = vote;
+            shared_data->votes[i] = vote; 
             break;
         }
     }
-    printf("Ha votado\n");
     sem_post(sem_vote);
 
     printf("[PERDEDOR] Voto: %s\n", vote ? "AFIRMATIVO" : "NEGATIVO\n");
@@ -202,7 +203,7 @@ void perdedor(int *pipefd) {
     write(pipefd[1], &b, sizeof(Block));
     close(pipefd[1]);
 
-    while (!shared_data->start_mining && !shared_data->tiempo_terminado) pause();
+    while (!shared_data->start_mining) pause();
 }
 
 void miner_cleanup() {
@@ -257,6 +258,7 @@ void miner(int *pipefd, int seconds, int n_threads) {
     long int solution = 0;
     int solution_flag = 0;
 
+    struct sigaction act_alrm, act_int;
     sigset_t set;
     
     sigemptyset(&set);
@@ -266,9 +268,23 @@ void miner(int *pipefd, int seconds, int n_threads) {
 
     signal(SIGUSR1, sigusr1_handler);
     signal(SIGUSR2, sigusr2_handler);
-    signal(SIGALRM, alarm_handler);
-    signal(SIGINT, sigint_handler);
 
+    sigemptyset(&act_alrm.sa_mask);
+    act_alrm.sa_handler = alarm_handler;
+    act_alrm.sa_flags = 0;
+    if (sigaction(SIGALRM, &act_alrm, NULL) == -1) {
+        perror("sigaction SIGALRM");
+        exit(EXIT_FAILURE);
+    }
+
+    sigemptyset(&act_int.sa_mask);
+    act_int.sa_handler = sigint_handler;
+    act_int.sa_flags = 0;
+    if (sigaction(SIGINT, &act_int, NULL) == -1) {
+        perror("sigaction SIGINT");
+        exit(EXIT_FAILURE);
+    }
+    
     created = 0;
     shm_fd = shm_open(SHM_NAME, O_CREAT | O_EXCL | O_RDWR, 0666);
     if (shm_fd == -1) {
@@ -322,9 +338,7 @@ void miner(int *pipefd, int seconds, int n_threads) {
             shared_data->current_block.id_block = 0;
             shared_data->current_block.target = BLOCK_TARGET;
             shared_data->start_mining = 0; 
-            shared_data->start_voting = 0;   
-            shared_data->tiempo_terminado = 0; 
-            shared_data->finish = 0;
+            shared_data->start_voting = 0; 
 
             shared_data->miner_pids[0] = getpid();
             shared_data->wallets[0].pid = getpid();
@@ -354,54 +368,50 @@ void miner(int *pipefd, int seconds, int n_threads) {
             kill(shared_data->miner_pids[i], SIGUSR1);
         }
     }
-
     alarm(seconds);
 
     printf("Número de mineros activos: %d\n", shared_data->miner_count);
 
-    while (!shared_data->tiempo_terminado && !shared_data->finish) {
-        while (!shared_data->start_mining && !shared_data->tiempo_terminado && !shared_data->finish) pause();
-        if (shared_data->tiempo_terminado==1 || shared_data->finish==1) break;
+    while (!shared_data->start_mining) pause();
 
-        printf("Iniciando la ronda");
+    printf("Iniciando la ronda");
 
-        int range = POW_LIMIT / n_threads;
-        solution_flag = 0;
-        solution=0;
+    int range = POW_LIMIT / n_threads;
+    solution_flag = 0;
+    solution=0;
 
-        threads= (pthread_t*)malloc(n_threads*sizeof(threads[0]));
-        if(threads==NULL){
-            exit(EXIT_FAILURE);
-        }
-
-        for (i = 0; i < n_threads; i++) {
-            params[i].start = i * range;
-            params[i].end = (i + 1) * range;
-            params[i].target = shared_data->current_block.target;
-            params[i].solution = &solution;
-            params[i].solution_flag = &solution_flag;
-            pthread_create(&threads[i], NULL, miner_thread, &params[i]);
-        }
-
-        for (i = 0; i < n_threads; i++) {
-            if (pthread_join(threads[i], NULL)) {
-                    perror("pthread_join");
-                    exit(EXIT_FAILURE);
-                }
-        }
-        free(threads);
-
-        sem_wait(sem_winner);
-
-        if (solution_flag && !shared_data->is_winner) {
-            shared_data->is_winner = 1;
-            ganador(pipefd, solution, shared_data->current_block.target);
-        } else {
-            perdedor(pipefd);
-        }
-
-        sem_post(sem_winner); 
+    threads= (pthread_t*)malloc(n_threads*sizeof(threads[0]));
+    if(threads==NULL){
+        exit(EXIT_FAILURE);
     }
+
+    for (i = 0; i < n_threads; i++) {
+        params[i].start = i * range;
+        params[i].end = (i + 1) * range;
+        params[i].target = shared_data->current_block.target;
+        params[i].solution = &solution;
+        params[i].solution_flag = &solution_flag;
+        pthread_create(&threads[i], NULL, miner_thread, &params[i]);
+    }
+
+    for (i = 0; i < n_threads; i++) {
+        if (pthread_join(threads[i], NULL)) {
+                perror("pthread_join");
+                exit(EXIT_FAILURE);
+            }
+    }
+    free(threads);
+
+    sem_wait(sem_winner);
+
+    if (solution_flag && !shared_data->is_winner) {
+        shared_data->is_winner = 1;
+        ganador(pipefd, solution, shared_data->current_block.target);
+    } else {
+        perdedor(pipefd);
+    }
+
+    sem_post(sem_winner); 
 
     miner_cleanup();
     printf("Minero PID %d terminado.\n", getpid());

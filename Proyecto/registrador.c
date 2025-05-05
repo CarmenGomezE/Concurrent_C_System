@@ -27,13 +27,13 @@ void registrador(int *pipefd) {
     }
 
     while ((bytesLeidos = read(pipefd[0], &b, sizeof(Block))) > 0) {
-        dprintf(fd, "d : %04d\n", b.id_block);
+        dprintf(fd, "Id : %04d\n", b.id_block);
         dprintf(fd, "Winner : %d\n", b.winner_pid);
         dprintf(fd, "Target : %ld\n", b.target);
         if(b.validated==1){
-            dprintf(fd, "Solution : %ld (validated)\n", b.solution);
+            dprintf(fd, "Solution : %ld ( validated )\n", b.solution);
         } else{
-        dprintf(fd, "Solution : %ld (rejected)\n", b.solution);
+        dprintf(fd, "Solution : %ld ( rejected )\n", b.solution);
         }
         dprintf(fd, "Votes : %d/%d\n", b.favor_votes, b.total_votes);
 

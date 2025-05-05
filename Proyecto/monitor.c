@@ -12,6 +12,10 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include "monitor.h"
+#include "pow.h"
+
+void monitor() {
+    
 #include "memoriaMonitor.h"
 
 /**
