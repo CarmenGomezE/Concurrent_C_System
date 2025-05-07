@@ -115,24 +115,19 @@ void ganador(int *pipefd, long int solution, long int target) {
         }
     }
     sem_post(sem_initial);
-
-    int attempts = 0, max_attempts = 100;
-    while (shared_data->current_block.total_votes < shared_data->miner_count - 1 && attempts++ < max_attempts) {
+    
+    while (shared_data->current_block.total_votes < shared_data->miner_count - 1) {
         usleep(100000);
     }
 
     b = shared_data->current_block;
 
-    sem_wait(sem_initial);
-    b.num_wallets = shared_data->num_wallets;
-    for (int i = 0; i < b.num_wallets; i++) {
-        b.wallets[i] = shared_data->wallets[i];
-    }
-    sem_post(sem_initial);
-
-    if (shared_data->current_block.favor_votes >= (shared_data->miner_count - 1) / 2) {
+    sem_wait(sem_vote);  
+    int majority_votes = (shared_data->miner_count - 1) / 2; 
+    if (shared_data->current_block.favor_votes > majority_votes) {
         printf("Bloque aprobado.\n");
-        b.validated = 1;
+        shared_data->current_block.validated = 1;  
+
         sem_wait(sem_initial);
         for (i = 0; i < shared_data->num_wallets; i++) {
             if (shared_data->wallets[i].pid == getpid()) {
@@ -144,6 +139,14 @@ void ganador(int *pipefd, long int solution, long int target) {
     } else {
         printf("Bloque rechazado.\n");
     }
+    sem_post(sem_vote);
+
+    sem_wait(sem_initial);
+    b.num_wallets = shared_data->num_wallets;
+    for (int i = 0; i < b.num_wallets; i++) {
+        b.wallets[i] = shared_data->wallets[i];
+    }
+    sem_post(sem_initial);
 
     mq = mq_open(MQ_NAME, O_WRONLY);
     if (mq != (mqd_t)-1) {
