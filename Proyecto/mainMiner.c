@@ -48,11 +48,13 @@ int main(int argc, char *argv[]){
     pid = fork();
     /** Código del registrador */
     if (pid == 0) {
+        close(pipefd[1]);
         registrador(pipefd);
         perror("Error en el registrador");
         exit(EXIT_FAILURE);
     } else if (pid>0){
-            /** Código del minero */
+        /** Código del minero */
+        close(pipefd[0]);
         miner(pipefd, sec, n_threads);
 
         waitpid(pid, &status, 0);

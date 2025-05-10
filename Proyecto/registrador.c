@@ -16,7 +16,6 @@ void registrador(int *pipefd) {
     char filename[64];
     int fd, i;
 
-    close(pipefd[1]);
     ppid = getppid();
     snprintf(filename, sizeof(filename), "registro_%d.txt", ppid);
 
@@ -43,6 +42,5 @@ void registrador(int *pipefd) {
         }
         dprintf(fd, "\n\n");
     } 
-    close(pipefd[0]);
     exit(EXIT_SUCCESS);
 }

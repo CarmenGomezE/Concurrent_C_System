@@ -144,10 +144,8 @@ void ganador(int *pipefd, long int solution, long int target) {
         mq_send(mq, (char *)&b, sizeof(Block), 0);
         mq_close(mq);
     }
-
-    close(pipefd[0]);
+    
     write(pipefd[1], &b, sizeof(Block));
-    close(pipefd[1]);
 
     sem_wait(sem_initial);
     shared_data->last_block = b;
@@ -193,10 +191,7 @@ void perdedor(int *pipefd) {
     }
     sem_post(sem_initial);
 
-    close(pipefd[0]);
     write(pipefd[1], &b, sizeof(Block));
-    close(pipefd[1]);
-
     while (!shared_data->start_mining){
         pause();
     } 
