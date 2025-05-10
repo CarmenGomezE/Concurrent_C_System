@@ -58,7 +58,7 @@ void monitor(SharedMemory *mem) {
         sem_post(&mem->mutex);
         sem_post(&mem->empty);
 
-        if (b.validated == -1) {
+        if (b.type == -1) {
             break;
         }
 

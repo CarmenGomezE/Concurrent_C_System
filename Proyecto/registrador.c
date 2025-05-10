@@ -44,6 +44,5 @@ void registrador(int *pipefd) {
         dprintf(fd, "\n\n");
     } 
     close(pipefd[0]);
-    printf("Registrador ha finalizado");
     exit(EXIT_SUCCESS);
 }

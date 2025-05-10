@@ -54,6 +54,7 @@ void clean_resources() {
         sem_destroy(&mem->mutex);
         sem_destroy(&mem->empty);
         sem_destroy(&mem->fill);
+        memset(mem, 0, sizeof(SharedMemory));
         munmap(mem, MEM_SIZE);
         shm_unlink(SHM_NAME_MONITOR);
     }
@@ -66,7 +67,7 @@ void clean_resources() {
 void handle_sigint(int sig) {
     (void)sig;
     Block b;
-    b.validated = -1;
+    b.type = -1;
     send_ending_block(b);
     clean_resources();
     exit(EXIT_SUCCESS);
@@ -143,7 +144,8 @@ int main (void) {
     monitor_pid = fork();
     if (monitor_pid == 0) {
         monitor(mem);
-        exit(EXIT_SUCCESS);
+        perror("Error en el monitor");
+        exit(EXIT_FAILURE);
     } else if (monitor_pid == -1) {
         perror("fork");
         clean_resources();
@@ -175,7 +177,7 @@ int main (void) {
         }
 
         /* Check if it is an ending block */
-        if (b.validated == -1) {
+        if (b.type == -1) {
             send_ending_block(b);
             break;
         }
@@ -201,6 +203,7 @@ int main (void) {
 
     /* Clean resources */
     clean_resources();
+    close(fd);
  
     return 0;
 }
