@@ -1,7 +1,7 @@
 /**
  * @file mainMiner.c
  * @author Carmen Gómez, María Pozo.
- * @brief Implementation of the main of the miner process.
+ * @brief Implementation of the main of the Minero process.
  * @version 2.0
  * @date 2025-02-24
  *
@@ -22,23 +22,23 @@
 #include "monitor.h"
 
 int main(int argc, char *argv[]){
-    int sec, n_threads, status=0;
+    int sec, n_threads, status = 0;
     pid_t pid;
 
-    if(argc!=3){
+    if (argc != 3) {
         perror("The arguments should be ./miner <N_SECONDS> <N_THREADS>");
         exit(EXIT_FAILURE);
     }
 
-    sec= atoi(argv[1]);
-    n_threads= atoi(argv[1]);
+    sec = atoi(argv[1]);
+    n_threads = atoi(argv[1]);
 
-    if(sec<=0 || n_threads<=0){
+    if (sec <=0 || n_threads <= 0) {
         perror("The arguments should be positive");
         exit(EXIT_FAILURE);
     }
 
-    /** Tubería para mandar al registrador */
+    /** Pipe to write for Registrador */
     int pipefd[2];  
     if (pipe(pipefd) == -1) {
         perror("pipe");
@@ -46,14 +46,14 @@ int main(int argc, char *argv[]){
     }
 
     pid = fork();
-    /** Código del registrador */
+    /**Registrador's code */
     if (pid == 0) {
         close(pipefd[1]);
         registrador(pipefd);
         perror("Error en el registrador");
         exit(EXIT_FAILURE);
     } else if (pid>0){
-        /** Código del minero */
+        /** Minero's code */
         close(pipefd[0]);
         miner(pipefd, sec, n_threads);
 

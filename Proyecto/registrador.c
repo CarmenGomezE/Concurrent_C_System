@@ -1,3 +1,13 @@
+/**
+ * @file registrador.h
+ * @author Carmen Gómez, María Pozo.
+ * @brief Implementation of the Resgitrador program.
+ * @version 2.0
+ * @date 2024-02-01
+ *
+ * @copyright Copyright (c) 2022
+ *
+ */
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -9,6 +19,10 @@
 #include "memoriaMiner.h"
 #include "miner.h"
 
+/**
+ * @brief Process Registrador
+ * @param pipefd Pipe file descriptor
+ */
 void registrador(int *pipefd) {
     Block b;
     ssize_t bytesLeidos;

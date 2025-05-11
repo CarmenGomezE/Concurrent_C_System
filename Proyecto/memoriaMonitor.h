@@ -18,7 +18,7 @@
 #define SHM_NAME_MONITOR "/monitor_shared_memory"   /*!< Shared memory name. */
 #define MEM_SIZE sizeof(SharedMemory)               /*!< Shared memory size. */
 
-/** SharedMemory structure that stores the information of the shared memory segment.*/
+/** SharedMemory structure that stores the information of the shared memory segment. */
 typedef struct {
     sem_t mutex;
     sem_t empty;

@@ -1,7 +1,7 @@
 /**
  * @file mainComprobador.c
  * @author  María Pozo, Carmen Gómez.
- * @brief Implementation of the main of the Comprobador process.
+ * @brief Implementation of the Comprobador process.
  * @version 2.0
  * @date 2025-02-24
  *
@@ -23,7 +23,9 @@
 #include "memoriaMonitor.h"
 #include "monitor.h"
 
+/** Shared memory for the monitoring. */
 SharedMemory *mem = NULL;
+/** Message queue for communicating with Ganador. */
 mqd_t mq;
 
 /**

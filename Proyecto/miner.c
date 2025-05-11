@@ -1,5 +1,5 @@
 /**
- * @file minero.c
+ * @file miner.c
  * @author María Pozo, Carmen Gómez.
  * @brief Implementation of the miner process.
  * @version 2.0
@@ -29,13 +29,16 @@
 #include <errno.h>
 #include <mqueue.h>
 
-/* ==== Definiciones globales ==== */
+/** Shared memory for the miner net. */
 static SharedData *shared_data;
+/** Initial semaphora. */
 static sem_t *sem_initial;
+/** Winner semaphore. */
 static sem_t *sem_winner;
+/** Vote semaphore. */
 static sem_t *sem_vote;
 
-/* ==== Estructura de hilos ==== */
+/** MinerParams structure for the threads. */
 typedef struct minerParams {
     int start;
     int end;
@@ -44,31 +47,50 @@ typedef struct minerParams {
     int *solution_flag;
 } MinerParams;
 
+/** Shared memory file descriptor. */
 int shm_fd;
 
-/* ==== Manejadores de señales ==== */
-void sigusr1_handler(int signo) { 
+/**
+ * @brief Handles signal SIGUSR1
+ * @param signo The signal SIGUSR1
+ */void sigusr1_handler(int signo) { 
     (void)signo;  
     shared_data->start_mining = 1; 
 }
 
+/**
+ * @brief Handles signal SIGUSR2
+ * @param signo The signal SIGUSR2
+ */
 void sigusr2_handler(int signo) { 
     (void)signo;  
     shared_data->start_voting = 1; 
 }
 
+/**
+ * @brief Handles signal SIGALARM
+ * @param signo The signal SIGALARM
+ */
 void alarm_handler(int signo) { 
     (void)signo; 
     miner_cleanup();
     exit(EXIT_SUCCESS);
 }
 
+/**
+ * @brief Handles signal SIGINT
+ * @param signo The signal SIGINT
+ */
 void sigint_handler(int signo) { 
     (void)signo; 
     miner_cleanup();
     exit(EXIT_SUCCESS); 
 }
 
+/**
+ * @brief Miner thread function
+ * @param arg MinerParams structure
+ */
 void *miner_thread(void *arg) {
     MinerParams *params = (MinerParams*)arg;
     if (*(params->solution_flag)) return NULL;
@@ -83,6 +105,12 @@ void *miner_thread(void *arg) {
     return NULL;
 }
 
+/**
+ * @brief Process Ganador 
+ * @param pipefd Pipe file descriptor
+ * @param solution Solution
+ * @param target Target
+ */
 void ganador(int *pipefd, long int solution, long int target) {
     Block b;
     mqd_t mq;
@@ -160,6 +188,10 @@ void ganador(int *pipefd, long int solution, long int target) {
     }
 }
 
+/**
+ * @brief Process Perdedor
+ * @param pipefd Pipe file descriptor
+ */
 void perdedor(int *pipefd) {
     Block b;
     int vote = 0;
@@ -197,6 +229,9 @@ void perdedor(int *pipefd) {
     } 
 }
 
+/**
+ * @brief Miner cleans resources
+ */
 void miner_cleanup() {
     int last= 0;
     if (shared_data != NULL) {
@@ -243,6 +278,12 @@ void miner_cleanup() {
     }
 }
 
+/**
+ * @brief Process Minero
+ * @param pipefd Pipe file descriptor
+ * @param seconds Number of seconds
+ * @param n_threads Number of threads
+ */
 void miner(int *pipefd, int seconds, int n_threads) {
     int i, created;
     pthread_t *threads=NULL;

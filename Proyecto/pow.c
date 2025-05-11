@@ -1,3 +1,13 @@
+/**
+ * @file pow.c
+ * @author SOPER teaching team.
+ * @brief Computation of the POW.
+ * @version 2.0
+ * @date 2024-02-01
+ *
+ * @copyright Copyright (c) 2022
+ *
+ */
 #include "pow.h"
 
 #define PRIME POW_LIMIT

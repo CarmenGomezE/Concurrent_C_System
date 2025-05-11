@@ -1,3 +1,13 @@
+/**
+ * @file miner.h
+ * @author María Pozo, Carmen Gómez.
+ * @brief Implementation of the Minero program.
+ * @version 2.0
+ * @date 2025-02-24
+ *
+ * @copyright Copyright (c) 2022
+ *
+ */
 #ifndef MINER_H
 #define MINER_H 
 

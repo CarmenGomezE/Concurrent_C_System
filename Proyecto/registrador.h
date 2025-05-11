@@ -1,7 +1,7 @@
 /**
  * @file registrador.h
- * @author SOPER teaching team.
- * @brief Implemetation of the logger.
+ * @author Carmen Gómez, María Pozo.
+ * @brief Implemetation of Registrador program.
  * @version 2.0
  * @date 2024-02-01
  *
